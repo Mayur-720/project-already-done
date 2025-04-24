@@ -1,4 +1,5 @@
 
+
 export interface User {
     _id: string;
     username: string;
@@ -80,6 +81,21 @@ export interface User {
     senderAlias: string;
     senderEmoji: string;
     read: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  export interface Notification {
+    _id: string;
+    user: string | User;
+    title: string;
+    body: string;
+    type: 'like' | 'comment' | 'whisper' | 'system';
+    read: boolean;
+    resourceId?: string;
+    resourceModel?: 'Post' | 'Comment' | 'Whisper';
+    sender?: string | User;
+    url?: string;
     createdAt: string;
     updatedAt: string;
   }

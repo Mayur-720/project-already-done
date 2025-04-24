@@ -1,5 +1,6 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import * as notificationApi from '@/lib/api-notification';
@@ -9,6 +10,7 @@ type NotificationContextType = {
   enableNotifications: () => Promise<boolean>;
   disableNotifications: () => void;
   unreadCount: number;
+  setUnreadCount: (count: number) => void;
   markAllAsRead: () => void;
 };
 
@@ -18,12 +20,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const queryClient = useQueryClient();
 
   // Fetch notifications to get unread count
   const { data: notifications, refetch: refetchNotifications } = useQuery({
     queryKey: ['notifications'],
     queryFn: notificationApi.getUserNotifications,
     enabled: !!user,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000, // Refetch every minute
   });
 
   // Update unread count when notifications change
@@ -34,22 +40,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [notifications]);
 
-  // Check if notifications are already enabled on mount
+  // Setup service worker for notifications
   useEffect(() => {
-    const checkNotificationPermission = async () => {
-      if (!('Notification' in window)) return;
-
-      const permission = await Notification.permission;
-      const serviceWorkerRegistration = await navigator.serviceWorker.getRegistration();
-      
-      if (permission === 'granted' && serviceWorkerRegistration) {
-        const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
-        setNotificationsEnabled(!!subscription);
+    const setupServiceWorker = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          await navigator.serviceWorker.register('/service-worker.js');
+          console.log('Service Worker registered successfully');
+          
+          const registration = await navigator.serviceWorker.ready;
+          
+          // Check if we already have a push subscription
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            setNotificationsEnabled(true);
+          }
+        } catch (error) {
+          console.error('Service Worker registration failed:', error);
+        }
       }
     };
 
     if (user) {
-      checkNotificationPermission();
+      setupServiceWorker();
     }
   }, [user]);
 
@@ -173,9 +186,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       await notificationApi.markAllAsRead();
       setUnreadCount(0);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       refetchNotifications();
     } catch (error) {
       console.error('Error marking notifications as read:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to mark notifications as read',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -186,6 +205,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         enableNotifications, 
         disableNotifications, 
         unreadCount,
+        setUnreadCount,
         markAllAsRead
       }}
     >

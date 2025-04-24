@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUserNotifications, markNotificationAsRead } from '@/lib/api-notification';
@@ -20,29 +20,41 @@ import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import AvatarGenerator from '@/components/user/AvatarGenerator';
 import { formatDistanceToNow } from 'date-fns';
+import { Notification } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 interface NotificationsDropdownProps {
   className?: string;
 }
 
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className }) => {
-  const { unreadCount, markAllAsRead } = useNotifications();
+  const { unreadCount, markAllAsRead, setUnreadCount } = useNotifications();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: notifications = [] } = useQuery({
+  const { data: notifications = [], refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: getUserNotifications,
+    refetchInterval: 30000, // Poll for new notifications every 30 seconds
   });
+
+  // Calculate unread count whenever notifications change
+  useEffect(() => {
+    if (notifications && notifications.length > 0) {
+      const unread = notifications.filter((notif: Notification) => !notif.read).length;
+      setUnreadCount(unread);
+    }
+  }, [notifications, setUnreadCount]);
 
   const markAsReadMutation = useMutation({
     mutationFn: markNotificationAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      refetch();
     },
   });
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsReadMutation.mutate(notification._id);
     }
@@ -50,6 +62,16 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
     if (notification.url) {
       navigate(notification.url);
     }
+  };
+
+  const handleMarkAllAsRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    markAllAsRead();
+    toast({
+      title: "Success",
+      description: "All notifications marked as read",
+    });
+    refetch();
   };
 
   const getNotificationIcon = (type: string) => {
@@ -91,10 +113,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={(e) => {
-                e.stopPropagation();
-                markAllAsRead();
-              }}
+              onClick={handleMarkAllAsRead}
               className="text-xs h-7"
             >
               Mark all as read
@@ -104,8 +123,8 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
         <DropdownMenuSeparator />
         <ScrollArea className="h-[300px]">
           <DropdownMenuGroup>
-            {notifications.length > 0 ? (
-              notifications.map((notification: any) => (
+            {notifications && notifications.length > 0 ? (
+              notifications.map((notification: Notification) => (
                 <DropdownMenuItem 
                   key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
@@ -118,8 +137,8 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
                     <div className="flex-shrink-0">
                       {notification.sender ? (
                         <AvatarGenerator
-                          emoji={notification.sender.avatarEmoji || "🎭"}
-                          nickname={notification.sender.anonymousAlias}
+                          emoji={typeof notification.sender === 'string' ? '🎭' : notification.sender.avatarEmoji || "🎭"}
+                          nickname={typeof notification.sender === 'string' ? 'Anonymous' : notification.sender.anonymousAlias || 'Anonymous'}
                           color="#6E59A5"
                           size="sm"
                         />

@@ -1,22 +1,28 @@
 
 // Service Worker for Web Push Notifications
 self.addEventListener('push', function(event) {
-  const data = event.data.json();
-  const options = {
-    body: data.body,
-    icon: '/lovable-uploads/3284e0d6-4a6b-4a45-9681-a18bf2a0f69f.png',
-    badge: '/lovable-uploads/3284e0d6-4a6b-4a45-9681-a18bf2a0f69f.png',
-    data: data.url,
-    vibrate: [100, 50, 100],
-    actions: [
-      { action: 'open', title: 'Open' },
-      { action: 'close', title: 'Close' }
-    ]
-  };
+  try {
+    const data = event.data.json();
+    console.log('Push notification received:', data);
+    
+    const options = {
+      body: data.body,
+      icon: '/lovable-uploads/3284e0d6-4a6b-4a45-9681-a18bf2a0f69f.png',
+      badge: '/lovable-uploads/3284e0d6-4a6b-4a45-9681-a18bf2a0f69f.png',
+      data: data.url,
+      vibrate: [100, 50, 100],
+      actions: [
+        { action: 'open', title: 'Open' },
+        { action: 'close', title: 'Close' }
+      ]
+    };
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+    event.waitUntil(
+      self.registration.showNotification(data.title, options)
+    );
+  } catch (error) {
+    console.error('Error handling push notification:', error);
+  }
 });
 
 self.addEventListener('notificationclick', function(event) {
@@ -37,4 +43,11 @@ self.addEventListener('notificationclick', function(event) {
       }
     })
   );
+});
+
+// Force the waiting service worker to become active
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

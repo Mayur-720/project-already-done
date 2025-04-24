@@ -1,5 +1,6 @@
 
 import { api } from './api';
+import { Notification } from '@/types';
 
 // Get VAPID public key
 export const getVapidPublicKey = async () => {
@@ -20,19 +21,34 @@ export const disableSubscription = async (endpoint: string) => {
 };
 
 // Get user notifications
-export const getUserNotifications = async () => {
-  const response = await api.get('/api/notifications');
-  return response.data;
+export const getUserNotifications = async (): Promise<Notification[]> => {
+  try {
+    const response = await api.get('/api/notifications');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return [];
+  }
 };
 
 // Mark notification as read
 export const markNotificationAsRead = async (notificationId: string) => {
-  const response = await api.put(`/api/notifications/${notificationId}/read`);
-  return response.data;
+  try {
+    const response = await api.put(`/api/notifications/${notificationId}/read`);
+    return response.data;
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
 };
 
 // Mark all notifications as read
 export const markAllAsRead = async () => {
-  const response = await api.put('/api/notifications/read-all');
-  return response.data;
+  try {
+    const response = await api.put('/api/notifications/read-all');
+    return response.data;
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    throw error;
+  }
 };
