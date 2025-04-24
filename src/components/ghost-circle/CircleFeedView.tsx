@@ -8,7 +8,7 @@ import PostCard from "@/components/feed/PostCard";
 import CreatePostModal from "@/components/feed/CreatePostModal";
 import { getGhostCirclePosts, getGhostCircleById } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
-import { Post } from "@/types"; // Ensure this import is using the correct type
+import { Post } from "@/types"; 
 
 interface CircleFeedViewProps {
   circleId: string;
@@ -151,7 +151,7 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-4">
-                {posts.map((post: Post) => (
+                {posts.map((post) => (
                   <PostCard 
                     key={post._id} 
                     post={post} 
