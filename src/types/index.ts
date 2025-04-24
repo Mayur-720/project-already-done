@@ -1,4 +1,3 @@
-
 export interface User {
     _id: string;
     username: string;
@@ -37,7 +36,7 @@ export interface User {
     anonymousAlias: string;
     avatarEmoji: string;
     ghostCircle?: string | GhostCircle;
-    likes: { user: string; anonymousAlias: string; }[];
+    likes: { user: string; anonymousAlias: string }[];
     comments: {
       _id: string;
       user: string;
@@ -57,8 +56,6 @@ export interface User {
     expiresAt: string;
     createdAt: string;
     updatedAt: string;
-    shareCount?: number;
-    username?: string;
   }
   
   export interface GhostCircle {
@@ -66,7 +63,7 @@ export interface User {
     name: string;
     description?: string;
     creator: string | User;
-    members: { userId: string; anonymousAlias?: string; avatarEmoji?: string; joinedAt: string; }[];
+    members: { userId: string; joinedAt: string }[];
     admins: string[] | User[];
     createdAt: string;
     updatedAt: string;
@@ -80,21 +77,6 @@ export interface User {
     senderAlias: string;
     senderEmoji: string;
     read: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }
-
-  export interface Notification {
-    _id: string;
-    user: string | User;
-    title: string;
-    body: string;
-    type: 'like' | 'comment' | 'whisper' | 'system';
-    read: boolean;
-    resourceId?: string;
-    resourceModel?: 'Post' | 'Comment' | 'Whisper';
-    sender?: string | User;
-    url?: string;
     createdAt: string;
     updatedAt: string;
   }

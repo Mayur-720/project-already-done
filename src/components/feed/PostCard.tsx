@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Heart,
   MessageCircle,
+  Info,
   MoreVertical,
   Trash,
   Edit,
@@ -51,7 +52,21 @@ import CommentItem from './CommentItem';
 import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
 import { User } from '@/types/user';
 import { useNavigate } from 'react-router-dom';
-import { Post } from '@/types';
+
+interface Post {
+  _id: string;
+  user: string;
+  username?: string;
+  anonymousAlias: string;
+  avatarEmoji: string;
+  content: string;
+  imageUrl?: string;
+  likes: { user: string }[];
+  comments: any[];
+  createdAt: string;
+  updatedAt: string;
+  shareCount?: number;
+}
 
 interface PostCardProps {
   post: Post;
@@ -85,9 +100,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  const postUserId = typeof post.user === 'string' ? post.user : post.user._id;
-  const isOwnPost = postUserId === currentUserId;
-  
+  const isOwnPost = post.user === currentUserId;
   const handleAliasClick = (userId: string, alias: string) => {
     navigate(`/profile/${userId}`, { state: { anonymousAlias: alias } });
   };
@@ -300,10 +313,10 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   const targetUser: User = {
-    _id: postUserId,
+    _id: post.user,
     anonymousAlias: post.anonymousAlias,
     avatarEmoji: post.avatarEmoji,
-    username: '',
+    username: post.username || '',
     email: '',
     fullName: '',
     recognitionAttempts: 0,
@@ -320,7 +333,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
   return (
     <Card className="border border-undercover-purple/20 bg-card shadow-md hover:shadow-lg transition-shadow mb-4">
-      <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(postUserId, post.anonymousAlias)}>
+      <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(post.user, post.anonymousAlias)}>
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <AvatarGenerator
@@ -411,8 +424,8 @@ const PostCard: React.FC<PostCardProps> = ({
                   className="flex items-center space-x-1 text-xs"
                   disabled={isSharing}
                 >
-                  <MousePointer2 size={16} className="rotate-90" />
-                  <span>{shareCount}</span>
+<MousePointer2 size={16} className="rotate-90" />
+<span>{shareCount}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

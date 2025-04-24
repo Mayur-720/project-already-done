@@ -7,7 +7,6 @@ import PostCard from "@/components/feed/PostCard";
 import CreatePostModal from "@/components/feed/CreatePostModal";
 import { getGhostCirclePosts, getGhostCircleById } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
-import { Post } from "@/types"; 
 
 interface CircleFeedViewProps {
   circleId: string;
@@ -27,6 +26,7 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
     queryKey: ["circleDetails", circleId],
     queryFn: () => getGhostCircleById(circleId),
   });
+  console.log(circleDetails);
 
   const {
     data: posts = [],
@@ -149,35 +149,9 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-4">
-                {posts.map((post) => {
-                  const completePost: Post = {
-                    _id: post._id,
-                    user: post.user || '',
-                    content: post.content || '',
-                    imageUrl: post.imageUrl || '',
-                    anonymousAlias: post.anonymousAlias || 'Anonymous',
-                    avatarEmoji: post.avatarEmoji || '🎭',
-                    comments: post.comments || [],
-                    expiresAt: post.expiresAt || new Date().toISOString(),
-                    createdAt: post.createdAt || new Date().toISOString(),
-                    updatedAt: post.updatedAt || new Date().toISOString(),
-                    likes: post.likes ? post.likes.map((like: any) => ({
-                      user: like.user || '',
-                      anonymousAlias: like.anonymousAlias || 'Anonymous'
-                    })) : [],
-                    shareCount: post.shareCount || 0
-                  };
-                  
-                  return (
-                    <PostCard 
-                      key={post._id} 
-                      post={completePost} 
-                      onRefresh={refetch}
-                      currentUserId={circleDetails?.creator?._id || ""}
-                      showOptions={true}
-                    />
-                  );
-                })}
+                {posts.map((post) => (
+                  <PostCard key={post._id} post={post} onRefresh={refetch} />
+                ))}
               </div>
             )}
           </div>

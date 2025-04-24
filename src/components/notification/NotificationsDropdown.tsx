@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUserNotifications, markNotificationAsRead } from '@/lib/api-notification';
@@ -20,46 +20,29 @@ import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import AvatarGenerator from '@/components/user/AvatarGenerator';
 import { formatDistanceToNow } from 'date-fns';
-import { Notification } from '@/types';
-import { toast } from '@/hooks/use-toast';
 
 interface NotificationsDropdownProps {
   className?: string;
 }
 
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className }) => {
-  const { unreadCount, markAllAsRead, setUnreadCount, refreshNotifications } = useNotifications();
+  const { unreadCount, markAllAsRead } = useNotifications();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: notifications = [], refetch } = useQuery({
+  const { data: notifications = [] } = useQuery({
     queryKey: ['notifications'],
     queryFn: getUserNotifications,
-    refetchInterval: 15000, // Poll for new notifications more frequently
   });
-
-  // Refresh notifications when dropdown opens
-  const handleDropdownOpen = () => {
-    refreshNotifications();
-  };
-
-  // Calculate unread count whenever notifications change
-  useEffect(() => {
-    if (notifications && notifications.length > 0) {
-      const unread = notifications.filter((notif: Notification) => !notif.read).length;
-      setUnreadCount(unread);
-    }
-  }, [notifications, setUnreadCount]);
 
   const markAsReadMutation = useMutation({
     mutationFn: markNotificationAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      refreshNotifications();
     },
   });
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: any) => {
     if (!notification.read) {
       markAsReadMutation.mutate(notification._id);
     }
@@ -67,15 +50,6 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
     if (notification.url) {
       navigate(notification.url);
     }
-  };
-
-  const handleMarkAllAsRead = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    markAllAsRead();
-    toast({
-      title: "Success",
-      description: "All notifications marked as read",
-    });
   };
 
   const getNotificationIcon = (type: string) => {
@@ -98,7 +72,6 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
           variant="ghost"
           size="icon"
           className={cn("relative", className)}
-          onClick={handleDropdownOpen}
         >
           <Bell size={20} />
           {unreadCount > 0 && (
@@ -118,7 +91,10 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={handleMarkAllAsRead}
+              onClick={(e) => {
+                e.stopPropagation();
+                markAllAsRead();
+              }}
               className="text-xs h-7"
             >
               Mark all as read
@@ -128,8 +104,8 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
         <DropdownMenuSeparator />
         <ScrollArea className="h-[300px]">
           <DropdownMenuGroup>
-            {notifications && notifications.length > 0 ? (
-              notifications.map((notification: Notification) => (
+            {notifications.length > 0 ? (
+              notifications.map((notification: any) => (
                 <DropdownMenuItem 
                   key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
@@ -142,8 +118,8 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
                     <div className="flex-shrink-0">
                       {notification.sender ? (
                         <AvatarGenerator
-                          emoji={typeof notification.sender === 'string' ? '🎭' : notification.sender.avatarEmoji || "🎭"}
-                          nickname={typeof notification.sender === 'string' ? 'Anonymous' : notification.sender.anonymousAlias || 'Anonymous'}
+                          emoji={notification.sender.avatarEmoji || "🎭"}
+                          nickname={notification.sender.anonymousAlias}
                           color="#6E59A5"
                           size="sm"
                         />

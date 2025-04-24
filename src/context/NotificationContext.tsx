@@ -1,6 +1,6 @@
 
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import * as notificationApi from '@/lib/api-notification';
@@ -10,9 +10,7 @@ type NotificationContextType = {
   enableNotifications: () => Promise<boolean>;
   disableNotifications: () => void;
   unreadCount: number;
-  setUnreadCount: (count: number) => void;
   markAllAsRead: () => void;
-  refreshNotifications: () => void;
 };
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -21,72 +19,36 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const queryClient = useQueryClient();
 
   // Fetch notifications to get unread count
   const { data: notifications, refetch: refetchNotifications } = useQuery({
     queryKey: ['notifications'],
     queryFn: notificationApi.getUserNotifications,
     enabled: !!user,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    onSuccess: (data) => {
+      const unread = data.filter((notif) => !notif.read).length;
+      setUnreadCount(unread);
+    },
   });
 
-  // Update unread count when notifications change
+  // Check if notifications are already enabled on mount
   useEffect(() => {
-    if (notifications) {
-      const unread = notifications.filter((notif) => !notif.read).length;
-      setUnreadCount(unread);
-    }
-  }, [notifications]);
+    const checkNotificationPermission = async () => {
+      if (!('Notification' in window)) return;
 
-  // Setup service worker for notifications
-  useEffect(() => {
-    const setupServiceWorker = async () => {
-      if ('serviceWorker' in navigator) {
-        try {
-          // Force update of service worker
-          const registration = await navigator.serviceWorker.register('/service-worker.js', {
-            updateViaCache: 'none',
-            scope: '/'
-          });
-          
-          console.log('Service Worker registered successfully');
-          
-          // Wait for the service worker to be ready
-          const readyRegistration = await navigator.serviceWorker.ready;
-          
-          // Check if we already have a push subscription
-          const subscription = await readyRegistration.pushManager.getSubscription();
-          if (subscription) {
-            setNotificationsEnabled(true);
-            
-            // Revalidate subscription on server to ensure it's active
-            await notificationApi.saveSubscription(subscription);
-          }
-          
-          // Add message listener for the service worker
-          navigator.serviceWorker.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
-              refreshNotifications();
-            }
-          });
-        } catch (error) {
-          console.error('Service Worker registration failed:', error);
-        }
+      const permission = await Notification.permission;
+      const serviceWorkerRegistration = await navigator.serviceWorker.getRegistration();
+      
+      if (permission === 'granted' && serviceWorkerRegistration) {
+        const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
+        setNotificationsEnabled(!!subscription);
       }
     };
 
     if (user) {
-      setupServiceWorker();
+      checkNotificationPermission();
     }
   }, [user]);
-
-  const refreshNotifications = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    refetchNotifications();
-  }, [queryClient, refetchNotifications]);
 
   const subscribeToNotifications = async (registration: ServiceWorkerRegistration) => {
     try {
@@ -164,9 +126,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else {
         // We already have a subscription
         setNotificationsEnabled(true);
-        
-        // Revalidate subscription on server
-        await notificationApi.saveSubscription(subscription);
         return true;
       }
     } catch (error) {
@@ -211,14 +170,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       await notificationApi.markAllAsRead();
       setUnreadCount(0);
-      refreshNotifications();
+      refetchNotifications();
     } catch (error) {
       console.error('Error marking notifications as read:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to mark notifications as read',
-        variant: 'destructive',
-      });
     }
   };
 
@@ -229,9 +183,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         enableNotifications, 
         disableNotifications, 
         unreadCount,
-        setUnreadCount,
-        markAllAsRead,
-        refreshNotifications
+        markAllAsRead
       }}
     >
       {children}
