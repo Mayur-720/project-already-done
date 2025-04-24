@@ -1,3 +1,4 @@
+
 export interface User {
     _id: string;
     username: string;
@@ -36,7 +37,7 @@ export interface User {
     anonymousAlias: string;
     avatarEmoji: string;
     ghostCircle?: string | GhostCircle;
-    likes: { user: string; anonymousAlias: string }[];
+    likes: { user: string; anonymousAlias: string; }[];
     comments: {
       _id: string;
       user: string;
@@ -56,6 +57,8 @@ export interface User {
     expiresAt: string;
     createdAt: string;
     updatedAt: string;
+    shareCount?: number; // Added shareCount property
+    username?: string; // Added optional username property
   }
   
   export interface GhostCircle {
@@ -63,7 +66,7 @@ export interface User {
     name: string;
     description?: string;
     creator: string | User;
-    members: { userId: string; joinedAt: string }[];
+    members: { userId: string; anonymousAlias?: string; avatarEmoji?: string; joinedAt: string; }[];
     admins: string[] | User[];
     createdAt: string;
     updatedAt: string;

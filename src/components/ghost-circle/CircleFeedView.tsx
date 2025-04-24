@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ghost, ArrowLeft, Users } from "lucide-react";
@@ -28,7 +27,6 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
     queryKey: ["circleDetails", circleId],
     queryFn: () => getGhostCircleById(circleId),
   });
-  console.log(circleDetails);
 
   const {
     data: posts = [],

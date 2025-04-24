@@ -1,9 +1,9 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import {
   Heart,
   MessageCircle,
-  Info,
   MoreVertical,
   Trash,
   Edit,
@@ -52,10 +52,10 @@ import CommentItem from './CommentItem';
 import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
 import { User } from '@/types/user';
 import { useNavigate } from 'react-router-dom';
-import { Post as PostType } from '@/types';
+import { Post } from '@/types';
 
 interface PostCardProps {
-  post: PostType;
+  post: Post;
   currentUserId?: string;
   onRefresh?: () => void;
   showOptions?: boolean;
@@ -86,7 +86,10 @@ const PostCard: React.FC<PostCardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  const isOwnPost = post.user === currentUserId;
+  // Convert post.user to string if it's an object
+  const postUserId = typeof post.user === 'string' ? post.user : post.user._id;
+  const isOwnPost = postUserId === currentUserId;
+  
   const handleAliasClick = (userId: string, alias: string) => {
     navigate(`/profile/${userId}`, { state: { anonymousAlias: alias } });
   };
@@ -298,11 +301,12 @@ const PostCard: React.FC<PostCardProps> = ({
     color: '#9333EA',
   };
 
+  // Create a targetUser object with required fields
   const targetUser: User = {
-    _id: post.user,
+    _id: postUserId,
     anonymousAlias: post.anonymousAlias,
     avatarEmoji: post.avatarEmoji,
-    username: post.username || '',
+    username: '',
     email: '',
     fullName: '',
     recognitionAttempts: 0,
