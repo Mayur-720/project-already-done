@@ -7,6 +7,20 @@
     <link rel="icon" type="image/png" href="/lovable-uploads/3284e0d6-4a6b-4a45-9681-a18bf2a0f69f.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UnderCover - Anonymous Social Network</title>
+    <script>
+      // Register Service Worker for push notifications
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+              console.error('Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

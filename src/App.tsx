@@ -1,9 +1,11 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -28,108 +30,107 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/invite" element={<InvitePage />} />
+          <NotificationProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/invite" element={<InvitePage />} />
 
-            {/* Main Routes with AppShell */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <Index />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            {/* <Route path="/profile/:userId" element={<UserProfilePage />} />
-            <Route path="/whispers/chat/:partnerId" element={<WhisperChatPage />} /> */}
-            <Route
-              path="/whispers"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <WhispersPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <ProfilePage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile/:userId"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <ProfilePage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/post/:id" element={<PostDetail />} />
-            <Route path="/chat/:partnerId" element={
-            
-              <AppShell>
-              <WhisperChatPage />
-              </AppShell>
-          } />
-            <Route
-              path="/ghost-circles"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <GhostCircles />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/referrals"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <ReferralPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/recognitions"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <RecognitionsPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/circles"
-              element={<Navigate to="/ghost-circles" replace />}
-            />
-            <Route
-              path="/discover"
-              element={
-                <ProtectedRoute>
-                  <AppShell>
-                    <Index />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
+              {/* Main Routes with AppShell */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <Index />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/whispers"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <WhispersPage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <ProfilePage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:userId"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <ProfilePage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/post/:id" element={<PostDetail />} />
+              <Route path="/chat/:partnerId" element={
+                <AppShell>
+                  <WhisperChatPage />
+                </AppShell>
+              } />
+              <Route
+                path="/ghost-circles"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <GhostCircles />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/referrals"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <ReferralPage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recognitions"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <RecognitionsPage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/circles"
+                element={<Navigate to="/ghost-circles" replace />}
+              />
+              <Route
+                path="/discover"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <Index />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

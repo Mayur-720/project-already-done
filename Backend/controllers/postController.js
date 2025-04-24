@@ -1,10 +1,10 @@
-
 const asyncHandler = require('express-async-handler');
 const Post = require('../models/postModel');
 const User = require('../models/userModel');
 const GhostCircle = require('../models/ghostCircleModel');
 const mongoose = require('mongoose');
 const { log } = require('console');
+const { sendPushNotification } = require('./notificationController');
 
 // @desc    Create a new post (global or in ghost circle)
 // @route   POST /api/posts
@@ -73,7 +73,9 @@ const createPost = asyncHandler(async (req, res) => {
 
   // Return the newly created post
   res.status(201).json(post);
-});const deletepost = asyncHandler(async (req, res) => {
+});
+
+const deletepost = asyncHandler(async (req, res) => {
   try {
     const  postId  = req.params.postId;
 
@@ -135,9 +137,6 @@ const updatePost = asyncHandler(async (req, res) => {
   res.json(updatedPost);
 });
 
-
-
-
 // @desc    Get global feed posts (not in ghost circles)
 // @route   GET /api/posts/global
 // @access  Private
@@ -152,7 +151,9 @@ const getGlobalFeed = asyncHandler(async (req, res) => {
   res.json(posts);
 });
 
-// controllers/postController.js
+// @desc    Add a comment
+// @route   POST /api/posts/:id/comments
+// @access  Private
 const addComment = asyncHandler(async (req, res) => {
   const { content, anonymousAlias } = req.body;
   
@@ -182,6 +183,19 @@ const addComment = asyncHandler(async (req, res) => {
 
     // Save the post with the new comment
     await post.save();
+
+    // After successfully adding the comment, send a notification to the post owner
+    if (post.user.toString() !== req.user._id.toString()) {
+      await sendPushNotification(post.user, {
+        title: 'New Comment',
+        body: `${anonymousAlias} commented on your post`,
+        type: 'comment',
+        resourceId: newComment._id,
+        resourceModel: 'Comment',
+        sender: req.user._id,
+        url: `/post/${post._id}`
+      });
+    }
 
     res.status(201).json({
       message: 'Comment added successfully',
@@ -425,6 +439,19 @@ const likePost = asyncHandler(async (req, res) => {
     }
   }
   
+  // After successfully liking the post, send a notification to the post owner
+  if (post.user.toString() !== req.user._id.toString()) {
+    await sendPushNotification(post.user, {
+      title: 'New Like',
+      body: `${req.user.anonymousAlias} liked your post`,
+      type: 'like',
+      resourceId: post._id,
+      resourceModel: 'Post',
+      sender: req.user._id,
+      url: `/post/${post._id}`
+    });
+  }
+  
   await post.save();
   
   res.json({ likes: post.likes.length, expiresAt: post.expiresAt });
@@ -550,7 +577,8 @@ module.exports = {
   recognizeUser,
   getComments,
   addComment,
-  editComment,incrementShareCount,
+  editComment,
+  incrementShareCount,
   deleteComment,
   replyToComment,
   deletepost

@@ -1,6 +1,8 @@
+
 const asyncHandler = require('express-async-handler');
 const Whisper = require('../models/whisperModel');
 const User = require('../models/userModel');
+const { sendPushNotification } = require('./notificationController');
 
 // @desc    Save a whisper message (for WebSocket)
 const saveWhisper = asyncHandler(async ({ senderId, receiverId, content, senderAlias, senderEmoji }) => {
@@ -26,6 +28,17 @@ const saveWhisper = asyncHandler(async ({ senderId, receiverId, content, senderA
     senderEmoji,
     read: false,
     visibilityLevel,
+  });
+
+  // Send push notification for new message
+  await sendPushNotification(receiverId, {
+    title: 'New Whisper',
+    body: `${senderAlias}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+    type: 'whisper',
+    resourceId: whisper._id,
+    resourceModel: 'Whisper',
+    sender: senderId,
+    url: `/chat/${senderId}`
   });
 
   return whisper;

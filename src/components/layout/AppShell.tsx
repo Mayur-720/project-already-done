@@ -9,12 +9,15 @@ import {
   X,
   PlusCircle,
   LogOut,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WhisperModal from "../whisper/WhisperModal";
 import { useAuth } from "@/context/AuthContext";
 import AvatarGenerator from "../user/AvatarGenerator";
 import { useLocation, useNavigate } from "react-router-dom";
+import NotificationsDropdown from "../notification/NotificationsDropdown";
+import NotificationPromptBanner from "../notification/NotificationPromptBanner";
 
 const NavItem: React.FC<{
   icon: React.ReactNode;
@@ -174,6 +177,7 @@ const AppShell = ({ children }: AppShellProps) => {
             <span className="text-xl mr-2">🕶️</span> Undercover
           </h1>
           <div className="flex items-center space-x-2">
+            <NotificationsDropdown />
             <Button variant="ghost" size="icon" className="text-purple-500" onClick={openWhisperModal}>
               <MessageSquare size={20} />
             </Button>
@@ -181,6 +185,11 @@ const AppShell = ({ children }: AppShellProps) => {
               <Menu size={20} />
             </Button>
           </div>
+        </div>
+
+        {/* Desktop Notification Button */}
+        <div className="hidden md:block fixed top-4 right-4 z-40">
+          <NotificationsDropdown />
         </div>
 
         {/* Children (Page Content) */}
@@ -204,6 +213,9 @@ const AppShell = ({ children }: AppShellProps) => {
             <UserRound size={20} />
           </Button>
         </div>
+
+        {/* Notification Banner */}
+        <NotificationPromptBanner />
       </div>
 
       {/* Whisper Modal */}
