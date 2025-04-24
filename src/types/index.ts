@@ -57,8 +57,8 @@ export interface User {
     expiresAt: string;
     createdAt: string;
     updatedAt: string;
-    shareCount?: number; // Added shareCount property
-    username?: string; // Added optional username property
+    shareCount?: number;
+    username?: string;
   }
   
   export interface GhostCircle {
