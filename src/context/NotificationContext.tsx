@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ type NotificationContextType = {
   unreadCount: number;
   setUnreadCount: (count: number) => void;
   markAllAsRead: () => void;
+  refreshNotifications: () => void;
 };
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -29,7 +30,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     enabled: !!user,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Update unread count when notifications change
@@ -45,16 +46,32 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const setupServiceWorker = async () => {
       if ('serviceWorker' in navigator) {
         try {
-          await navigator.serviceWorker.register('/service-worker.js');
+          // Force update of service worker
+          const registration = await navigator.serviceWorker.register('/service-worker.js', {
+            updateViaCache: 'none',
+            scope: '/'
+          });
+          
           console.log('Service Worker registered successfully');
           
-          const registration = await navigator.serviceWorker.ready;
+          // Wait for the service worker to be ready
+          const readyRegistration = await navigator.serviceWorker.ready;
           
           // Check if we already have a push subscription
-          const subscription = await registration.pushManager.getSubscription();
+          const subscription = await readyRegistration.pushManager.getSubscription();
           if (subscription) {
             setNotificationsEnabled(true);
+            
+            // Revalidate subscription on server to ensure it's active
+            await notificationApi.saveSubscription(subscription);
           }
+          
+          // Add message listener for the service worker
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
+              refreshNotifications();
+            }
+          });
         } catch (error) {
           console.error('Service Worker registration failed:', error);
         }
@@ -65,6 +82,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setupServiceWorker();
     }
   }, [user]);
+
+  const refreshNotifications = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    refetchNotifications();
+  }, [queryClient, refetchNotifications]);
 
   const subscribeToNotifications = async (registration: ServiceWorkerRegistration) => {
     try {
@@ -142,6 +164,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else {
         // We already have a subscription
         setNotificationsEnabled(true);
+        
+        // Revalidate subscription on server
+        await notificationApi.saveSubscription(subscription);
         return true;
       }
     } catch (error) {
@@ -186,8 +211,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       await notificationApi.markAllAsRead();
       setUnreadCount(0);
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      refetchNotifications();
+      refreshNotifications();
     } catch (error) {
       console.error('Error marking notifications as read:', error);
       toast({
@@ -206,7 +230,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         disableNotifications, 
         unreadCount,
         setUnreadCount,
-        markAllAsRead
+        markAllAsRead,
+        refreshNotifications
       }}
     >
       {children}

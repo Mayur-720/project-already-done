@@ -1,30 +1,58 @@
 
 import { api } from './api';
 import { Notification } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 // Get VAPID public key
 export const getVapidPublicKey = async () => {
-  const response = await api.get('/api/notifications/vapid-public-key');
-  return response.data;
+  try {
+    const response = await api.get('/api/notifications/vapid-public-key');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching VAPID key:', error);
+    throw error;
+  }
 };
 
 // Save push subscription
 export const saveSubscription = async (subscription: PushSubscription) => {
-  const response = await api.post('/api/notifications/subscription', { subscription });
-  return response.data;
+  try {
+    const response = await api.post('/api/notifications/subscription', { subscription });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving subscription:', error);
+    toast({
+      title: 'Notification Error',
+      description: 'Failed to save notification settings',
+      variant: 'destructive'
+    });
+    throw error;
+  }
 };
 
 // Disable push subscription
 export const disableSubscription = async (endpoint: string) => {
-  const response = await api.post('/api/notifications/subscription/disable', { endpoint });
-  return response.data;
+  try {
+    const response = await api.post('/api/notifications/subscription/disable', { endpoint });
+    return response.data;
+  } catch (error) {
+    console.error('Error disabling subscription:', error);
+    throw error;
+  }
 };
 
 // Get user notifications
 export const getUserNotifications = async (): Promise<Notification[]> => {
   try {
     const response = await api.get('/api/notifications');
-    return response.data;
+    
+    // Check if response has proper data structure
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      console.error('Invalid notifications response format:', response.data);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching notifications:', error);
     return [];

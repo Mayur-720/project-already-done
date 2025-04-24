@@ -29,13 +29,11 @@ const PostDetail: React.FC = () => {
     anonymousAlias: post.anonymousAlias || 'Anonymous',
     avatarEmoji: post.avatarEmoji || '🎭',
     comments: post.comments || [],
+    likes: post.likes || [],
     expiresAt: post.expiresAt || new Date().toISOString(),
     createdAt: post.createdAt || new Date().toISOString(),
     updatedAt: post.updatedAt || new Date().toISOString(),
-    likes: post.likes ? post.likes.map((like: any) => ({ 
-      user: like.user, 
-      anonymousAlias: like.anonymousAlias || 'Anonymous' 
-    })) : []
+    shareCount: post.shareCount || 0
   };
 
   return(

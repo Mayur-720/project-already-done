@@ -28,15 +28,20 @@ interface NotificationsDropdownProps {
 }
 
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className }) => {
-  const { unreadCount, markAllAsRead, setUnreadCount } = useNotifications();
+  const { unreadCount, markAllAsRead, setUnreadCount, refreshNotifications } = useNotifications();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const { data: notifications = [], refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: getUserNotifications,
-    refetchInterval: 30000, // Poll for new notifications every 30 seconds
+    refetchInterval: 15000, // Poll for new notifications more frequently
   });
+
+  // Refresh notifications when dropdown opens
+  const handleDropdownOpen = () => {
+    refreshNotifications();
+  };
 
   // Calculate unread count whenever notifications change
   useEffect(() => {
@@ -50,7 +55,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
     mutationFn: markNotificationAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      refetch();
+      refreshNotifications();
     },
   });
 
@@ -71,7 +76,6 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
       title: "Success",
       description: "All notifications marked as read",
     });
-    refetch();
   };
 
   const getNotificationIcon = (type: string) => {
@@ -94,6 +98,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
           variant="ghost"
           size="icon"
           className={cn("relative", className)}
+          onClick={handleDropdownOpen}
         >
           <Bell size={20} />
           {unreadCount > 0 && (
