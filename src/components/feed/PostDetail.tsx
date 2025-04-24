@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPostById } from '@/lib/api'; // Assume this API exists
 import PostCard from './PostCard';
 import AppShell from '../layout/AppShell';
+import { Post } from '@/types';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,17 +21,21 @@ const PostDetail: React.FC = () => {
   if (!post) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Post not found</div>;
 
   // Transform and ensure the post conforms to the Post type requirements
-  const transformedPost = {
-    ...post,
+  const transformedPost: Post = {
+    _id: post._id,
     user: post.user,
+    content: post.content || '',
+    imageUrl: post.imageUrl || '',
     anonymousAlias: post.anonymousAlias || 'Anonymous',
     avatarEmoji: post.avatarEmoji || '🎭',
     comments: post.comments || [],
     expiresAt: post.expiresAt || new Date().toISOString(),
-    likes: post.likes.map((like: any) => ({ 
+    createdAt: post.createdAt || new Date().toISOString(),
+    updatedAt: post.updatedAt || new Date().toISOString(),
+    likes: post.likes ? post.likes.map((like: any) => ({ 
       user: like.user, 
       anonymousAlias: like.anonymousAlias || 'Anonymous' 
-    }))
+    })) : []
   };
 
   return(

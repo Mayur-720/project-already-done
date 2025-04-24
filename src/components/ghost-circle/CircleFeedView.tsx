@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ghost, ArrowLeft, Users } from "lucide-react";
@@ -151,13 +152,21 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               <div className="space-y-2 sm:space-y-4">
                 {posts.map((post) => {
                   const completePost: Post = {
-                    ...post,
+                    _id: post._id,
                     user: post.user || '',
+                    content: post.content || '',
+                    imageUrl: post.imageUrl || '',
                     anonymousAlias: post.anonymousAlias || 'Anonymous',
                     avatarEmoji: post.avatarEmoji || '🎭',
                     comments: post.comments || [],
                     expiresAt: post.expiresAt || new Date().toISOString(),
-                    likes: post.likes || []
+                    createdAt: post.createdAt || new Date().toISOString(),
+                    updatedAt: post.updatedAt || new Date().toISOString(),
+                    likes: post.likes ? post.likes.map((like: any) => ({
+                      user: like.user || '',
+                      anonymousAlias: like.anonymousAlias || 'Anonymous'
+                    })) : [],
+                    shareCount: post.shareCount || 0
                   };
                   
                   return (
