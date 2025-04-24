@@ -59,7 +59,16 @@ const AppShell = ({ children }: AppShellProps) => {
     refetchInterval: 15000,
   });
 
-  const unreadWhisperCount = whispers.reduce((count, convo) => count + (convo.unreadCount || 0), 0);
+  const uniqueUnreadUsersCount = useMemo(() => {
+    if (!whispers || whispers.length === 0) return 0;
+    const uniqueUsers = new Set();
+    whispers.forEach(convo => {
+      if (convo.unreadCount > 0) {
+        uniqueUsers.add(convo._id);
+      }
+    });
+    return uniqueUsers.size;
+  }, [whispers]);
 
   useEffect(() => {
     if (location.pathname === "/") setCurrentTab("Home");
@@ -117,9 +126,9 @@ const AppShell = ({ children }: AppShellProps) => {
               label={
                 <div className="flex justify-between items-center w-full">
                   <span>Whispers</span>
-                  {unreadWhisperCount > 0 && (
+                  {uniqueUnreadUsersCount > 0 && (
                     <Badge variant="destructive" className="ml-2">
-                      {unreadWhisperCount}
+                      {uniqueUnreadUsersCount}
                     </Badge>
                   )}
                 </div>
@@ -228,12 +237,12 @@ const AppShell = ({ children }: AppShellProps) => {
             onClick={() => navigate("/whispers")}
           >
             <MessageSquare size={20} className={currentTab === "Whispers" ? "text-purple-500" : "text-muted-foreground"} />
-            {unreadWhisperCount > 0 && (
+            {uniqueUnreadUsersCount > 0 && (
               <Badge 
                 variant="destructive" 
                 className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
               >
-                {unreadWhisperCount > 9 ? '9+' : unreadWhisperCount}
+                {uniqueUnreadUsersCount > 9 ? '9+' : uniqueUnreadUsersCount}
               </Badge>
             )}
           </Button>
