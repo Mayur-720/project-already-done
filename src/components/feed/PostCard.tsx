@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import {
@@ -86,7 +85,6 @@ const PostCard: React.FC<PostCardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  // Convert post.user to string if it's an object
   const postUserId = typeof post.user === 'string' ? post.user : post.user._id;
   const isOwnPost = postUserId === currentUserId;
   
@@ -301,7 +299,6 @@ const PostCard: React.FC<PostCardProps> = ({
     color: '#9333EA',
   };
 
-  // Create a targetUser object with required fields
   const targetUser: User = {
     _id: postUserId,
     anonymousAlias: post.anonymousAlias,
@@ -323,7 +320,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
   return (
     <Card className="border border-undercover-purple/20 bg-card shadow-md hover:shadow-lg transition-shadow mb-4">
-      <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(post.user, post.anonymousAlias)}>
+      <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(postUserId, post.anonymousAlias)}>
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <AvatarGenerator

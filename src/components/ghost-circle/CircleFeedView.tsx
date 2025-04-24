@@ -149,15 +149,27 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-4">
-                {posts.map((post) => (
-                  <PostCard 
-                    key={post._id} 
-                    post={post} 
-                    onRefresh={refetch}
-                    currentUserId={circleDetails?.creator?._id || ""}
-                    showOptions={true}
-                  />
-                ))}
+                {posts.map((post) => {
+                  const completePost: Post = {
+                    ...post,
+                    user: post.user || '',
+                    anonymousAlias: post.anonymousAlias || 'Anonymous',
+                    avatarEmoji: post.avatarEmoji || '🎭',
+                    comments: post.comments || [],
+                    expiresAt: post.expiresAt || new Date().toISOString(),
+                    likes: post.likes || []
+                  };
+                  
+                  return (
+                    <PostCard 
+                      key={post._id} 
+                      post={completePost} 
+                      onRefresh={refetch}
+                      currentUserId={circleDetails?.creator?._id || ""}
+                      showOptions={true}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

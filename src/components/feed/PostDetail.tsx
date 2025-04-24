@@ -19,10 +19,15 @@ const PostDetail: React.FC = () => {
   if (error) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Error loading post</div>;
   if (!post) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Post not found</div>;
 
-  // Transform the post likes to ensure they have the required anonymousAlias property
+  // Transform and ensure the post conforms to the Post type requirements
   const transformedPost = {
     ...post,
-    likes: post.likes.map(like => ({ 
+    user: post.user,
+    anonymousAlias: post.anonymousAlias || 'Anonymous',
+    avatarEmoji: post.avatarEmoji || '🎭',
+    comments: post.comments || [],
+    expiresAt: post.expiresAt || new Date().toISOString(),
+    likes: post.likes.map((like: any) => ({ 
       user: like.user, 
       anonymousAlias: like.anonymousAlias || 'Anonymous' 
     }))
