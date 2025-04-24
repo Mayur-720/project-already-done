@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Home,
@@ -18,6 +17,9 @@ import AvatarGenerator from "../user/AvatarGenerator";
 import { useLocation, useNavigate } from "react-router-dom";
 import NotificationsDropdown from "../notification/NotificationsDropdown";
 import NotificationPromptBanner from "../notification/NotificationPromptBanner";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { getMyWhispers } from "@/lib/api";
 
 const NavItem: React.FC<{
   icon: React.ReactNode;
@@ -51,8 +53,15 @@ const AppShell = ({ children }: AppShellProps) => {
   const [whisperModalOpen, setWhisperModalOpen] = useState(false);
   const { user, logout } = useAuth();
 
+  const { data: whispers = [] } = useQuery({
+    queryKey: ['whispers'],
+    queryFn: getMyWhispers,
+    refetchInterval: 15000,
+  });
+
+  const unreadWhisperCount = whispers.reduce((count, convo) => count + (convo.unreadCount || 0), 0);
+
   useEffect(() => {
-    
     if (location.pathname === "/") setCurrentTab("Home");
     else if (location.pathname === "/whispers") setCurrentTab("Whispers");
     else if (location.pathname === "/ghost-circles") setCurrentTab("Circles");
@@ -79,7 +88,6 @@ const AppShell = ({ children }: AppShellProps) => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Desktop Sidebar */}
       <div className="hidden md:flex flex-col w-64 border-r border-border bg-card h-screen sticky top-0">
         <div className="p-4 border-b border-border">
           <h1 className="text-xl font-bold text-purple-500 flex items-center hover:cursor-pointer" onClick={()=> navigate("/")}>
@@ -104,7 +112,21 @@ const AppShell = ({ children }: AppShellProps) => {
           <div className="space-y-1">
             <NavItem icon={<Home size={18} />} label="Home" active={currentTab === "Home"} onClick={() => navigate("/")} />
             <NavItem icon={<Users size={18} />} label="Ghost Circles" active={currentTab === "Circles"} onClick={() => navigate("/ghost-circles")} />
-            <NavItem icon={<MessageSquare size={18} />} label="Whispers" active={currentTab === "Whispers"} onClick={() => navigate("/whispers")} />
+            <NavItem 
+              icon={<MessageSquare size={18} />} 
+              label={
+                <div className="flex justify-between items-center w-full">
+                  <span>Whispers</span>
+                  {unreadWhisperCount > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {unreadWhisperCount}
+                    </Badge>
+                  )}
+                </div>
+              } 
+              active={currentTab === "Whispers"} 
+              onClick={() => navigate("/whispers")} 
+            />
             <NavItem icon={<UserRound size={18} />} label="Profile" active={currentTab === "Profile"} onClick={() => navigate("/profile")} />
           </div>
 
@@ -121,7 +143,6 @@ const AppShell = ({ children }: AppShellProps) => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 bg-background/95 z-50 flex md:hidden flex-col animate-fade-in">
           <div className="p-4 flex justify-between items-center border-b border-border">
@@ -159,7 +180,6 @@ const AppShell = ({ children }: AppShellProps) => {
             </Button>
           </div>
 
-          {/* Mobile Logout Button */}
           <div className="p-4 border-t border-border">
             <Button onClick={handleLogout} className="w-full bg-red-500 hover:bg-red-700 text-white">
               <LogOut size={16} className="mr-2" />
@@ -169,9 +189,7 @@ const AppShell = ({ children }: AppShellProps) => {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Mobile Top Bar */}
         <div className="md:hidden sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border p-4 flex justify-between items-center">
           <h1 className="text-lg font-bold text-purple-500 flex items-center" onClick={()=> navigate("/")}>
             <span className="text-xl mr-2">🕶️</span> Undercover
@@ -187,15 +205,12 @@ const AppShell = ({ children }: AppShellProps) => {
           </div>
         </div>
 
-        {/* Desktop Notification Button */}
         <div className="hidden md:block fixed top-4 right-4 z-40">
           <NotificationsDropdown />
         </div>
 
-        {/* Children (Page Content) */}
         <div className="flex-1 pb-16 md:pb-0">{children}</div>
 
-        {/* Bottom Navigation (Mobile) */}
         <div className="md:hidden fixed bottom-0 w-full bg-card border-t border-border p-2 flex justify-around">
           <Button variant="ghost" size="icon" className={currentTab === "Home" ? "text-purple-500" : "text-muted-foreground"} onClick={() => navigate("/")}>
             <Home size={20} />
@@ -206,19 +221,30 @@ const AppShell = ({ children }: AppShellProps) => {
           <Button variant="secondary" size="icon" className="rounded-full bg-purple-600 text-white" onClick={openWhisperModal}>
             <PlusCircle size={20} />
           </Button>
-          <Button variant="ghost" size="icon" className={currentTab === "Whispers" ? "text-purple-500" : "text-muted-foreground"} onClick={() => navigate("/whispers")}>
-            <MessageSquare size={20} />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative"
+            onClick={() => navigate("/whispers")}
+          >
+            <MessageSquare size={20} className={currentTab === "Whispers" ? "text-purple-500" : "text-muted-foreground"} />
+            {unreadWhisperCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {unreadWhisperCount > 9 ? '9+' : unreadWhisperCount}
+              </Badge>
+            )}
           </Button>
           <Button variant="ghost" size="icon" className={currentTab === "Profile" ? "text-purple-500" : "text-muted-foreground"} onClick={() => navigate("/profile")}>
             <UserRound size={20} />
           </Button>
         </div>
 
-        {/* Notification Banner */}
         <NotificationPromptBanner />
       </div>
 
-      {/* Whisper Modal */}
       <WhisperModal open={whisperModalOpen} onOpenChange={setWhisperModalOpen} />
     </div>
   );
