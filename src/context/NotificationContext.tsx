@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import * as notificationApi from '@/lib/api-notification';
@@ -7,7 +8,8 @@ import { Notification } from '@/types';
 interface NotificationContextType {
   notificationsEnabled: boolean;
   unreadCount: number;
-  enableNotifications: () => Promise<void>;
+  enableNotifications: () => Promise<boolean>;
+  disableNotifications: () => void;
   setNotificationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   markAllAsRead: () => Promise<void>;
   notifications: Notification[] | undefined;
@@ -37,7 +39,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [notifications]);
 
   useEffect(() => {
-    const subscribeToNotifications = async () => {
+    const syncNotificationStatus = async () => {
       if (notificationsEnabled && user) {
         try {
           await notificationApi.subscribeToNotifications();
@@ -45,7 +47,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           console.error('Failed to subscribe to notifications:', error);
           setNotificationsEnabled(false);
         }
-      } else {
+      } else if (user) {
         try {
           await notificationApi.unsubscribeFromNotifications();
         } catch (error) {
@@ -54,16 +56,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     };
 
-    subscribeToNotifications();
+    syncNotificationStatus();
   }, [notificationsEnabled, user]);
 
   const enableNotifications = async () => {
     try {
-      await notificationApi.enableNotifications();
-      setNotificationsEnabled(true);
+      const result = await notificationApi.enableNotifications();
+      setNotificationsEnabled(result);
+      return result;
     } catch (error) {
       console.error('Failed to enable notifications:', error);
+      return false;
     }
+  };
+
+  const disableNotifications = () => {
+    setNotificationsEnabled(false);
   };
 
   const markAllAsRead = async () => {
@@ -82,6 +90,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         notificationsEnabled,
         unreadCount,
         enableNotifications,
+        disableNotifications,
         setNotificationsEnabled,
         markAllAsRead,
         notifications,
@@ -93,10 +102,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 };
 
-export const useNotification = () => {
+export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    throw new Error('useNotification must be used within a NotificationProvider');
+    throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;
 };

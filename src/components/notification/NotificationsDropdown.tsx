@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import AvatarGenerator from '@/components/user/AvatarGenerator';
 import { formatDistanceToNow } from 'date-fns';
+import { Notification } from '@/types';
 
 interface NotificationsDropdownProps {
   className?: string;
@@ -42,7 +43,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
     },
   });
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsReadMutation.mutate(notification._id);
     }
@@ -105,7 +106,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
         <ScrollArea className="h-[300px]">
           <DropdownMenuGroup>
             {notifications.length > 0 ? (
-              notifications.map((notification: any) => (
+              notifications.map((notification: Notification) => (
                 <DropdownMenuItem 
                   key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
@@ -118,8 +119,8 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
                     <div className="flex-shrink-0">
                       {notification.sender ? (
                         <AvatarGenerator
-                          emoji={notification.sender.avatarEmoji || "🎭"}
-                          nickname={notification.sender.anonymousAlias}
+                          emoji={(notification.sender as any).avatarEmoji || "🎭"}
+                          nickname={(notification.sender as any).anonymousAlias}
                           color="#6E59A5"
                           size="sm"
                         />

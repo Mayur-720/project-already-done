@@ -84,3 +84,18 @@ export interface Whisper {
   updatedAt: string;
   unreadCount?: number;
 }
+
+export interface Notification {
+  _id: string;
+  user: string;
+  title: string;
+  body: string;
+  type: 'like' | 'comment' | 'whisper' | 'system';
+  read: boolean;
+  resourceId?: string;
+  resourceModel?: 'Post' | 'Comment' | 'Whisper';
+  sender?: string | User;
+  url?: string;
+  createdAt: string;
+  updatedAt: string;
+}
