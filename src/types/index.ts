@@ -32,7 +32,7 @@ export interface User {
 export interface Post {
   _id: string;
   user: string | User;
-  content?: string;
+  content: string;
   imageUrl?: string;
   anonymousAlias: string;
   avatarEmoji: string;
