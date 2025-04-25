@@ -52,6 +52,7 @@ import CommentItem from './CommentItem';
 import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
 import { User } from '@/types/user';
 import { useNavigate } from 'react-router-dom';
+import { Post as AppPost } from '@/types';
 
 interface Post {
   _id: string;
@@ -424,8 +425,8 @@ const PostCard: React.FC<PostCardProps> = ({
                   className="flex items-center space-x-1 text-xs"
                   disabled={isSharing}
                 >
-<MousePointer2 size={16} className="rotate-90" />
-<span>{shareCount}</span>
+                  <MousePointer2 size={16} className="rotate-90" />
+                  <span>{shareCount}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

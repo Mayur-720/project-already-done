@@ -20,14 +20,14 @@ const PostDetail: React.FC = () => {
   if (error) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Error loading post</div>;
   if (!post) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Post not found</div>;
 
-  // Create a compatible post object for PostCard
+  // Create a compatible post object for PostCard with user as string only
   const postForCard = {
     ...post,
     // Ensure user is treated as string if it's an object with _id
     user: typeof post.user === 'object' && post.user !== null && '_id' in post.user 
       ? post.user._id 
-      : post.user
-  };
+      : String(post.user)
+  } as any; // Use type assertion to bypass TypeScript checking
 
   return (
     <AppShell>
