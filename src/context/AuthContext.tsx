@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, fullName: string, email: string, password: string, referralCode?: string) => Promise<void>;
   logout: () => void;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,11 +47,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       const data = await loginUser(email, password);
+      
+      // Check if user is admin
+      const isAdminUser = email === 'admin@gmail.com' && password === 'mayurisbest';
+      setIsAdmin(isAdminUser);
+      
       localStorage.setItem('token', data.token);
-      setUser(data);
+      setUser({
+        ...data,
+        role: isAdminUser ? 'admin' as const : 'user' as const
+      });
+      
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${data.username}!`,
+        description: `Welcome back, ${data.username}!${isAdminUser ? ' (Admin)' : ''}`,
       });
       navigate('/');
     } catch (error: any) {
@@ -146,6 +157,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         isAuthenticated: !!user,
         isLoading,
+        isAdmin,
         login,
         register,
         logout,

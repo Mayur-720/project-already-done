@@ -100,6 +100,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
 
   const isOwnPost = post.user === currentUserId;
   const handleAliasClick = (userId: string, alias: string) => {
@@ -303,6 +304,14 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
+  const handleDoubleClick = async () => {
+    if (!isLiked) {
+      setShowLikeAnimation(true);
+      await handleLike();
+      setTimeout(() => setShowLikeAnimation(false), 1000);
+    }
+  };
+
   const postTime = post.createdAt
     ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })
     : 'Unknown time';
@@ -334,209 +343,220 @@ const PostCard: React.FC<PostCardProps> = ({
 
   return (
     <Card className="border border-undercover-purple/20 bg-card shadow-md hover:shadow-lg transition-shadow mb-4">
-      <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(post.user, post.anonymousAlias)}>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <AvatarGenerator
-              emoji={identity.emoji}
-              nickname={identity.nickname}
-              color={identity.color}
+      <div className="relative" onDoubleClick={handleDoubleClick}>
+        {showLikeAnimation && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <Heart 
+              className="text-red-500 animate-scale-in" 
+              size={64} 
+              fill="currentColor"
             />
-            <span className="font-medium text-sm">{identity.nickname}</span>
           </div>
+        )}
+        <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(post.user, post.anonymousAlias)}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <AvatarGenerator
+                emoji={identity.emoji}
+                nickname={identity.nickname}
+                color={identity.color}
+              />
+              <span className="font-medium text-sm">{identity.nickname}</span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{postTime}</span>
-            {showOptions && isOwnPost && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{postTime}</span>
+              {showOptions && isOwnPost && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical size={16} />
+                      <span className="sr-only">More options</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                      <Edit size={16} className="mr-2" />
+                      Edit Post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="text-red-500 focus:text-red-500"
+                    >
+                      <Trash size={16} className="mr-2" />
+                      Delete Post
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-2">
+          <p className="text-sm text-foreground mb-2">{post.content}</p>
+
+          {imageUrl && (
+            <div className="mt-3 rounded-md overflow-hidden">
+              <img
+                src={imageUrl}
+                alt="Post image"
+                className="w-full h-auto max-h-80 object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  console.error('Image failed to load:', target.src);
+                  target.onerror = null;
+                  target.src = '/placeholder.svg';
+                }}
+              />
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="p-4 pt-0 flex flex-col">
+          <div className="flex items-center justify-between w-full gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-1 text-xs"
+                onClick={handleLike}
+                disabled={isLiking}
+              >
+                <Heart
+                  size={16}
+                  className={isLiked ? 'fill-red-500 text-red-500' : ''}
+                />
+                <span>{likeCount}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-1 text-xs"
+                onClick={handleToggleComments}
+              >
+                <MessageCircle size={16} />
+                <span>{comments.length || post.comments?.length || 0}</span>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical size={16} />
-                    <span className="sr-only">More options</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center space-x-1 text-xs"
+                    disabled={isSharing}
+                  >
+                    <MousePointer2 size={16} className="rotate-90" />
+                    <span>{shareCount}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                    <Edit size={16} className="mr-2" />
-                    Edit Post
+                  <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
+                    Share via WhatsApp
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setDeleteDialogOpen(true)}
-                    className="text-red-500 focus:text-red-500"
-                  >
-                    <Trash size={16} className="mr-2" />
-                    Delete Post
+                  <DropdownMenuItem onClick={() => handleShare('instagram')}>
+                    Share via Instagram
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShare('link')}>
+                    Copy Link
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+            {!isOwnPost && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setGuessModalOpen(true)}
+                title="Guess identity"
+                className="flex items-center space-x-1 text-xs border-undercover-purple/20 hover:bg-undercover-purple/10"
+              >
+                <Eye size={14} /> <span>Guess?</span>
+              </Button>
             )}
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-2">
-        <p className="text-sm text-foreground mb-2">{post.content}</p>
 
-        {imageUrl && (
-          <div className="mt-3 rounded-md overflow-hidden">
-            <img
-              src={imageUrl}
-              alt="Post image"
-              className="w-full h-auto max-h-80 object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                console.error('Image failed to load:', target.src);
-                target.onerror = null;
-                target.src = '/placeholder.svg';
-              }}
-            />
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="p-4 pt-0 flex flex-col">
-        <div className="flex items-center justify-between w-full gap-2">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center space-x-1 text-xs"
-              onClick={handleLike}
-              disabled={isLiking}
-            >
-              <Heart
-                size={16}
-                className={isLiked ? 'fill-red-500 text-red-500' : ''}
-              />
-              <span>{likeCount}</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center space-x-1 text-xs"
-              onClick={handleToggleComments}
-            >
-              <MessageCircle size={16} />
-              <span>{comments.length || post.comments?.length || 0}</span>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center space-x-1 text-xs"
-                  disabled={isSharing}
-                >
-                  <MousePointer2 size={16} className="rotate-90" />
-                  <span>{shareCount}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
-                  Share via WhatsApp
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleShare('instagram')}>
-                  Share via Instagram
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleShare('link')}>
-                  Copy Link
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {!isOwnPost && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setGuessModalOpen(true)}
-              title="Guess identity"
-              className="flex items-center space-x-1 text-xs border-undercover-purple/20 hover:bg-undercover-purple/10"
-            >
-              <Eye size={14} /> <span>Guess?</span>
-            </Button>
-          )}
-        </div>
+          {showComments && (
+            <div className="mt-4 w-full">
+              <div className="border-t border-border pt-4">
+                {isLoadingComments ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin h-5 w-5 border-2 border-undercover-purple rounded-full border-t-transparent"></div>
+                  </div>
+                ) : comments.length > 0 ? (
+                  <div className="space-y-4 max-h-60 overflow-y-auto">
+                    {comments.map((comment) => (
+                      <CommentItem
+                        key={comment._id}
+                        comment={comment}
+                        postId={post._id}
+                        onDelete={handleDeleteComment}
+                        onEdit={handleEditComment}
+                        onReply={handleReplyToComment}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground text-sm py-2">
+                    No comments yet
+                  </p>
+                )}
 
-        {showComments && (
-          <div className="mt-4 w-full">
-            <div className="border-t border-border pt-4">
-              {isLoadingComments ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin h-5 w-5 border-2 border-undercover-purple rounded-full border-t-transparent"></div>
+                <div className="mt-4 flex space-x-2">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="resize-none h-10 py-2"
+                  />
+                  <Button
+                    onClick={handleSubmitComment}
+                    className="bg-undercover-purple hover:bg-undercover-deep-purple"
+                    disabled={!newComment.trim() || isSubmitting}
+                  >
+                    <Send size={16} />
+                  </Button>
                 </div>
-              ) : comments.length > 0 ? (
-                <div className="space-y-4 max-h-60 overflow-y-auto">
-                  {comments.map((comment) => (
-                    <CommentItem
-                      key={comment._id}
-                      comment={comment}
-                      postId={post._id}
-                      onDelete={handleDeleteComment}
-                      onEdit={handleEditComment}
-                      onReply={handleReplyToComment}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground text-sm py-2">
-                  No comments yet
-                </p>
-              )}
-
-              <div className="mt-4 flex space-x-2">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="resize-none h-10 py-2"
-                />
-                <Button
-                  onClick={handleSubmitComment}
-                  className="bg-undercover-purple hover:bg-undercover-deep-purple"
-                  disabled={!newComment.trim() || isSubmitting}
-                >
-                  <Send size={16} />
-                </Button>
               </div>
             </div>
-          </div>
+          )}
+        </CardFooter>
+
+        {isOwnPost && (
+          <>
+            <EditPostModal
+              open={editModalOpen}
+              onOpenChange={setEditModalOpen}
+              post={post}
+              onSuccess={() => {
+                if (onRefresh) onRefresh();
+              }}
+            />
+
+            <DeletePostDialog
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              postId={post._id}
+              onSuccess={() => {
+                if (onRefresh) onRefresh();
+              }}
+            />
+          </>
         )}
-      </CardFooter>
 
-      {isOwnPost && (
-        <>
-          <EditPostModal
-            open={editModalOpen}
-            onOpenChange={setEditModalOpen}
-            post={post}
+        {!isOwnPost && (
+          <GuessIdentityModal
+            open={guessModalOpen}
+            onOpenChange={setGuessModalOpen}
+            targetUser={targetUser}
             onSuccess={() => {
               if (onRefresh) onRefresh();
+              toast({
+                title: 'Recognition successful! 🎉',
+                description: `You correctly identified ${post.anonymousAlias}!`,
+              });
             }}
           />
-
-          <DeletePostDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            postId={post._id}
-            onSuccess={() => {
-              if (onRefresh) onRefresh();
-            }}
-          />
-        </>
-      )}
-
-      {!isOwnPost && (
-        <GuessIdentityModal
-          open={guessModalOpen}
-          onOpenChange={setGuessModalOpen}
-          targetUser={targetUser}
-          onSuccess={() => {
-            if (onRefresh) onRefresh();
-            toast({
-              title: 'Recognition successful! 🎉',
-              description: `You correctly identified ${post.anonymousAlias}!`,
-            });
-          }}
-        />
-      )}
+        )}
+      </div>
     </Card>
   );
 };
