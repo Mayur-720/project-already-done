@@ -23,7 +23,7 @@ const PostDetail: React.FC = () => {
   return (
     <AppShell>
       <div className="max-w-4xl relative mx-auto mt-4 mb-8 p-4 rounded-lg">
-        <PostCard post={post as Post} onRefresh={() => {}} />
+        <PostCard post={post} onRefresh={() => {}} />
       </div>
     </AppShell>
   );

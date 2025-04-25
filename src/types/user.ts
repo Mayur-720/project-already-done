@@ -1,5 +1,7 @@
 
 // types/user.ts
+import { Post as BasePost } from './index';
+
 export interface User {
     _id: string;
     username: string;
@@ -28,25 +30,17 @@ export interface User {
     [x: string]: string | number | string[] | Array<{ tierLevel: number; rewardType: 'badge' | 'cash' | 'premium'; claimedAt: string; paymentMethod?: 'paypal' | 'venmo' | 'giftcard'; paymentDetails?: string; status: 'pending' | 'completed' | 'failed'; }> | undefined | User[]; // Permissive index signature
   }
 
-  export interface Post {
-    _id: string;
-    content: string;
-    imageUrl?: string;
-    ghostCircleId?: string;
-    userId: string;
-    likes: string[];
-    createdAt: string;
-    updatedAt: string;
-  }
+// Re-export the Post type from index.ts
+export type Post = BasePost;
 
-  export interface Recognition {
-    stats: {
-      recognitionRate: number;
-      totalRecognized: number;
-      totalRecognizers: number;
-      successfulRecognitions: number;
-      recognitionAttempts: number;
-    };
-    recognized?: User[];
-    recognizers?: User[];
-  }
+export interface Recognition {
+  stats: {
+    recognitionRate: number;
+    totalRecognized: number;
+    totalRecognizers: number;
+    successfulRecognitions: number;
+    recognitionAttempts: number;
+  };
+  recognized?: User[];
+  recognizers?: User[];
+}

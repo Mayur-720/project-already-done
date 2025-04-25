@@ -40,13 +40,13 @@ export interface Post {
   likes: { user: string; anonymousAlias: string }[];
   comments: {
     _id: string;
-    user: string;
+    user: string | User;
     content: string;
     anonymousAlias: string;
     avatarEmoji: string;
     replies: {
       _id: string;
-      user: string;
+      user: string | User;
       content: string;
       anonymousAlias: string;
       avatarEmoji: string;
@@ -59,6 +59,7 @@ export interface Post {
   updatedAt: string;
   shareCount?: number;
   unreadCount?: number;
+  userId?: string; // Optional field for compatibility with user.ts Post type
 }
 
 export interface GhostCircle {
