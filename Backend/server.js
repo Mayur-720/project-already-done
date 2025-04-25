@@ -12,7 +12,6 @@ const ghostCircleRoutes = require('./routes/ghostCircleRoutes');
 const postRoutes = require('./routes/postRoutes');
 const whisperRoutes = require('./routes/whisperRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const adminRoutes = require('./routes/adminRoutes');
 const socketConfig = require('./configs/socket');
 
 const app = express();
@@ -57,7 +56,6 @@ app.use('/api/ghost-circles', ghostCircleRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/whispers', whisperRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/admin', adminRoutes);
 
 app.get('/healthcheck', (req, res) => {
   res.status(200).json({ status: 'ok' });

@@ -1,61 +1,140 @@
 
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import './App.css';
-import { AuthProvider } from './context/AuthContext';
-import { NotificationProvider } from './context/NotificationContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import NotFound from "./pages/NotFound";
+import WhispersPage from "./pages/WhispersPage";
+import ProfilePage from "./pages/ProfilePage";
+import GhostCircles from "./pages/GhostCircles";
+import AppShell from "./components/layout/AppShell";
+import InvitePage from "./pages/InvitePage";
+import ReferralPage from "./pages/ReferralPage";
+import RecognitionsPage from "./pages/RecognitionsPage";
+import WhisperChatPage from "./components/whisper/WhisperChatPage";
+import PostDetail from "./components/feed/PostDetail";
 
-import Index from './pages/Index';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import NotFound from './pages/NotFound';
-import GhostCircles from './pages/GhostCircles';
-import WhispersPage from './pages/WhispersPage';
-import ReferralPage from './pages/ReferralPage';
-import ProfilePage from './pages/ProfilePage';
-import InvitePage from './pages/InvitePage';
-import RecognitionsPage from './pages/RecognitionsPage';
-import AdminPanel from './components/admin/AdminPanel';
-import PostDetail from './components/feed/PostDetail';
+const queryClient = new QueryClient();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: true,
-    },
-  },
-});
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <NotificationProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/invite" element={<InvitePage />} />
 
-function App() {
-  return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <AuthProvider>
-            <NotificationProvider>
-              <Routes>
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/ghost-circles" element={<ProtectedRoute><GhostCircles /></ProtectedRoute>} />
-                <Route path="/whispers" element={<ProtectedRoute><WhispersPage /></ProtectedRoute>} />
-                <Route path="/invite" element={<ProtectedRoute><InvitePage /></ProtectedRoute>} />
-                <Route path="/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-                <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
-                <Route path="/recognitions" element={<ProtectedRoute><RecognitionsPage /></ProtectedRoute>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <AdminPanel />
-            </NotificationProvider>
-          </AuthProvider>
-        </Router>
-      </QueryClientProvider>
-    </React.StrictMode>
-  );
-}
+              {/* Main Routes with AppShell */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <Index />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/whispers"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <WhispersPage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <ProfilePage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:userId"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <ProfilePage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/post/:id" element={<PostDetail />} />
+              <Route path="/chat/:partnerId" element={
+                <AppShell>
+                  <WhisperChatPage />
+                </AppShell>
+              } />
+              <Route
+                path="/ghost-circles"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <GhostCircles />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/referrals"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <ReferralPage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recognitions"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <RecognitionsPage />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/circles"
+                element={<Navigate to="/ghost-circles" replace />}
+              />
+              <Route
+                path="/discover"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <Index />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </NotificationProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;

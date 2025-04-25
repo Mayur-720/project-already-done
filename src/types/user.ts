@@ -10,7 +10,6 @@ export interface User {
     anonymousAlias: string;
     avatarEmoji: string;
     bio?: string;
-    role?: 'user' | 'admin'; // Added role field
     referralCount?: number;
     referralCode?: string;
     referredBy?: string;

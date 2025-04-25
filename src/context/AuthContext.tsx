@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -11,7 +10,6 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, fullName: string, email: string, password: string, referralCode?: string) => Promise<void>;
   logout: () => void;
@@ -24,7 +22,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -47,35 +44,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      
-      // Special case for admin user
-      if (email === "admin" && password === "mayurisbest") {
-        // Create admin user object manually
-        const adminUser = {
-          _id: "admin-user-id",
-          username: "admin",
-          fullName: "Admin User",
-          email: "admin@example.com",
-          anonymousAlias: "AdminShadow",
-          avatarEmoji: "👑",
-          role: "admin",
-          referralCount: 0
-        };
-        
-        // Store a mock token
-        localStorage.setItem('token', 'admin-mock-token');
-        setUser(adminUser);
-        
-        toast({
-          title: 'Admin login successful',
-          description: 'Welcome back, Administrator!',
-        });
-        
-        navigate('/');
-        return;
-      }
-      
-      // Regular login flow
       const data = await loginUser(email, password);
       localStorage.setItem('token', data.token);
       setUser(data);
@@ -178,7 +146,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         isAuthenticated: !!user,
         isLoading,
-        isAdmin,
         login,
         register,
         logout,

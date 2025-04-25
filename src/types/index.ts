@@ -1,6 +1,33 @@
 
-// types/index.ts
-import { User } from './user';
+export interface User {
+  _id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  anonymousAlias: string;
+  avatarEmoji: string;
+  bio?: string;
+  referralCode?: string;
+  referralCount?: number;
+  referredBy?: string | User;
+  ghostCircles?: string[] | GhostCircle[];
+  friends?: string[] | User[];
+  recognizedUsers?: string[] | User[];
+  identityRecognizers?: string[] | User[];
+  recognitionAttempts?: number;
+  successfulRecognitions?: number;
+  recognitionRevocations?: string[] | User[];
+  claimedRewards?: {
+    tierLevel: number;
+    rewardType: string;
+    rewardDescription: string;
+    paymentDetails: string;
+    status: string;
+    claimedAt: string;
+  }[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface Post {
   _id: string;
@@ -10,46 +37,53 @@ export interface Post {
   anonymousAlias: string;
   avatarEmoji: string;
   ghostCircle?: string | GhostCircle;
-  likes: Array<{ user: string; anonymousAlias: string; createdAt: string }>;
-  comments: Comment[];
+  likes: { user: string; anonymousAlias: string }[];
+  comments: {
+    _id: string;
+    user: string | User;
+    content: string;
+    anonymousAlias: string;
+    avatarEmoji: string;
+    replies: {
+      _id: string;
+      user: string | User;
+      content: string;
+      anonymousAlias: string;
+      avatarEmoji: string;
+      createdAt: string;
+    }[];
+    createdAt: string;
+  }[];
+  expiresAt: string;
   createdAt: string;
   updatedAt: string;
-  expiresAt: string;
   shareCount?: number;
-  isPinned?: boolean;
-  pinnedUntil?: string;
-  pinnedBy?: string;
-}
-
-export interface Comment {
-  _id: string;
-  user: string;
-  anonymousAlias: string;
-  avatarEmoji: string;
-  content: string;
-  createdAt: string;
-  replies?: Comment[];
+  unreadCount?: number;
+  userId?: string; // Optional field for compatibility with user.ts Post type
 }
 
 export interface GhostCircle {
   _id: string;
   name: string;
   description?: string;
-  createdBy: string;
-  members: CircleMember[];
-  posts: string[];
-  inviteCode?: string;
+  creator: string | User;
+  members: { userId: string; joinedAt: string; anonymousAlias?: string; avatarEmoji?: string; }[];
+  admins: string[] | User[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CircleMember {
+export interface Whisper {
   _id: string;
-  userId: string;
-  anonymousAlias: string;
-  avatarEmoji: string;
-  joinedAt: string;
-  role?: 'member' | 'admin';
+  sender: string | User;
+  receiver: string | User;
+  content: string;
+  senderAlias: string;
+  senderEmoji: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+  unreadCount?: number;
 }
 
 export interface Notification {
@@ -57,26 +91,12 @@ export interface Notification {
   user: string;
   title: string;
   body: string;
-  type: 'like' | 'comment' | 'whisper' | 'system' | 'broadcast';
+  type: 'like' | 'comment' | 'whisper' | 'system';
   read: boolean;
   resourceId?: string;
-  resourceModel?: string;
-  sender?: string;
+  resourceModel?: 'Post' | 'Comment' | 'Whisper';
+  sender?: string | User;
   url?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface BroadcastNotification {
-  _id?: string;
-  title: string;
-  body: string;
-  targetGroup: 'all' | 'specific';
-  targetUsers?: string[];
-  scheduledFor?: string;
-  sentAt?: string;
-  status: 'scheduled' | 'sent' | 'failed';
-  createdBy: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
