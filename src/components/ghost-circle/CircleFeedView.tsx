@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ghost, ArrowLeft, Users } from "lucide-react";
@@ -7,6 +8,7 @@ import PostCard from "@/components/feed/PostCard";
 import CreatePostModal from "@/components/feed/CreatePostModal";
 import { getGhostCirclePosts, getGhostCircleById } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+import { Post } from "@/types";
 
 interface CircleFeedViewProps {
   circleId: string;
@@ -78,6 +80,7 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               onClick={onBack}
               className="sm:mb-0 md:hidden"
             >
+              <ArrowLeft className="h-4 sm:h-5 w-4 sm:w-5" />
             </Button>
           )}
           <h2 className="text-lg sm:text-xl font-medium flex items-center gap-2">
@@ -149,7 +152,7 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-4">
-                {posts.map((post) => (
+                {posts.map((post: Post) => (
                   <PostCard key={post._id} post={post} onRefresh={refetch} />
                 ))}
               </div>

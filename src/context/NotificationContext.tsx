@@ -25,11 +25,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     queryKey: ['notifications'],
     queryFn: notificationApi.getUserNotifications,
     enabled: !!user,
-    onSuccess: (data) => {
-      const unread = data.filter((notif) => !notif.read).length;
-      setUnreadCount(unread);
-    },
   });
+
+  // Update unread count when notifications data changes
+  useEffect(() => {
+    if (notifications) {
+      const unread = notifications.filter((notif) => !notif.read).length;
+      setUnreadCount(unread);
+    }
+  }, [notifications]);
 
   // Check if notifications are already enabled on mount
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Home,
@@ -23,7 +24,7 @@ import { getMyWhispers } from "@/lib/api";
 
 const NavItem: React.FC<{
   icon: React.ReactNode;
-  label: string;
+  label: React.ReactNode;
   active?: boolean;
   onClick?: () => void;
 }> = ({ icon, label, active = false, onClick }) => {

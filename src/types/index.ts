@@ -1,3 +1,4 @@
+
 export interface User {
   _id: string;
   username: string;
@@ -57,6 +58,7 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   shareCount?: number;
+  unreadCount?: number;
 }
 
 export interface GhostCircle {
@@ -64,7 +66,7 @@ export interface GhostCircle {
   name: string;
   description?: string;
   creator: string | User;
-  members: { userId: string; joinedAt: string }[];
+  members: { userId: string; joinedAt: string; anonymousAlias?: string; avatarEmoji?: string; }[];
   admins: string[] | User[];
   createdAt: string;
   updatedAt: string;
@@ -80,4 +82,5 @@ export interface Whisper {
   read: boolean;
   createdAt: string;
   updatedAt: string;
+  unreadCount?: number;
 }
