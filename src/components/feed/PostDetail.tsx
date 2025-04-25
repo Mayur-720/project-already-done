@@ -20,10 +20,19 @@ const PostDetail: React.FC = () => {
   if (error) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Error loading post</div>;
   if (!post) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Post not found</div>;
 
+  // Create a compatible post object for PostCard
+  const postForCard = {
+    ...post,
+    // Ensure user is treated as string if it's an object with _id
+    user: typeof post.user === 'object' && post.user !== null && '_id' in post.user 
+      ? post.user._id 
+      : post.user
+  };
+
   return (
     <AppShell>
       <div className="max-w-4xl relative mx-auto mt-4 mb-8 p-4 rounded-lg">
-        <PostCard post={post} onRefresh={() => {}} />
+        <PostCard post={postForCard} onRefresh={() => {}} />
       </div>
     </AppShell>
   );

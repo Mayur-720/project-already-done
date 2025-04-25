@@ -152,9 +152,20 @@ const CircleFeedView: React.FC<CircleFeedViewProps> = ({ circleId, onBack }) => 
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-4">
-                {posts.map((post: any) => (
-                  <PostCard key={post._id} post={post} onRefresh={refetch} />
-                ))}
+                {posts.map((post: any) => {
+                  // Create a compatible post object for PostCard
+                  const postForCard = {
+                    ...post,
+                    // Ensure user is treated as string if it's an object with _id
+                    user: typeof post.user === 'object' && post.user !== null && '_id' in post.user 
+                      ? post.user._id 
+                      : post.user
+                  };
+                  
+                  return (
+                    <PostCard key={post._id} post={postForCard} onRefresh={refetch} />
+                  );
+                })}
               </div>
             )}
           </div>
