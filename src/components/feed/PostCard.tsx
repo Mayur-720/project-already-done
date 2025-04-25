@@ -11,6 +11,7 @@ import {
   Eye,
   Share2,
   MousePointer2,
+  Pin,
 } from 'lucide-react';
 import {
   Card,
@@ -67,6 +68,9 @@ interface Post {
   createdAt: string;
   updatedAt: string;
   shareCount?: number;
+  isAdminPost?: boolean;
+  isPinned?: boolean;
+  pinnedUntil?: string;
 }
 
 interface PostCardProps {
@@ -82,7 +86,7 @@ const PostCard: React.FC<PostCardProps> = ({
   onRefresh,
   showOptions = false,
 }) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [likeCount, setLikeCount] = useState(post.likes?.length || 0);
@@ -101,8 +105,12 @@ const PostCard: React.FC<PostCardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+  const [isPinned, setIsPinned] = useState(post.isPinned || false);
+  const [pinDuration, setPinDuration] = useState<string>('1d');
 
   const isOwnPost = post.user === currentUserId;
+  const isAdminPost = post.isAdminPost || post.anonymousAlias === 'TheAdmin';
+
   const handleAliasClick = (userId: string, alias: string) => {
     navigate(`/profile/${userId}`, { state: { anonymousAlias: alias } });
   };
@@ -129,6 +137,34 @@ const PostCard: React.FC<PostCardProps> = ({
       console.error('Like error:', error);
     } finally {
       setIsLiking(false);
+    }
+  };
+
+  const handlePinPost = async (duration: string) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setIsPinned(true);
+      setPinDuration(duration);
+      
+      let durationText = '24 hours';
+      if (duration === '7d') durationText = '7 days';
+      if (duration === 'indefinite') durationText = 'indefinitely';
+      
+      toast({
+        title: 'Post pinned',
+        description: `This post has been pinned for ${durationText}.`,
+      });
+      
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not pin this post. Please try again.',
+      });
     }
   };
 
@@ -341,8 +377,12 @@ const PostCard: React.FC<PostCardProps> = ({
       : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${post.imageUrl}`
     : null;
 
+  const cardClassName = `border shadow-md hover:shadow-lg transition-shadow mb-4 ${
+    isAdminPost ? 'admin-post' : 'border-undercover-purple/20 bg-card'
+  } ${isPinned ? 'pinned-post' : ''}`;
+
   return (
-    <Card className="border border-undercover-purple/20 bg-card shadow-md hover:shadow-lg transition-shadow mb-4">
+    <Card className={cardClassName}>
       <div className="relative" onDoubleClick={handleDoubleClick}>
         {showLikeAnimation && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -357,16 +397,26 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <AvatarGenerator
-                emoji={identity.emoji}
-                nickname={identity.nickname}
-                color={identity.color}
+                emoji={post.avatarEmoji}
+                nickname={post.anonymousAlias}
+                color={isAdminPost ? '#FFC107' : '#9333EA'}
               />
-              <span className="font-medium text-sm">{identity.nickname}</span>
+              <div className="flex flex-col">
+                <span className="font-medium text-sm flex items-center gap-1">
+                  {post.anonymousAlias}
+                  {isAdminPost && <span className="text-xs text-amber-400">(Admin)</span>}
+                </span>
+                {isPinned && (
+                  <span className="text-xs text-orange-400 flex items-center">
+                    <Pin size={10} className="mr-1" /> Pinned
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{postTime}</span>
-              {showOptions && isOwnPost && (
+              {(showOptions && isOwnPost) || isAdmin ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -375,20 +425,53 @@ const PostCard: React.FC<PostCardProps> = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                      <Edit size={16} className="mr-2" />
-                      Edit Post
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setDeleteDialogOpen(true)}
-                      className="text-red-500 focus:text-red-500"
-                    >
-                      <Trash size={16} className="mr-2" />
-                      Delete Post
-                    </DropdownMenuItem>
+                    {isOwnPost && (
+                      <>
+                        <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                          <Edit size={16} className="mr-2" />
+                          Edit Post
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeleteDialogOpen(true)}
+                          className="text-red-500 focus:text-red-500"
+                        >
+                          <Trash size={16} className="mr-2" />
+                          Delete Post
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    
+                    {isAdmin && !isPinned && (
+                      <>
+                        <DropdownMenuItem onClick={() => handlePinPost('1d')}>
+                          <Pin size={16} className="mr-2" />
+                          Pin for 24 hours
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handlePinPost('7d')}>
+                          <Pin size={16} className="mr-2" />
+                          Pin for 7 days
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handlePinPost('indefinite')}>
+                          <Pin size={16} className="mr-2" />
+                          Pin indefinitely
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    
+                    {isAdmin && isPinned && (
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setIsPinned(false); 
+                          toast({ title: 'Post unpinned', description: 'This post is no longer pinned.' });
+                        }}
+                      >
+                        <Pin size={16} className="mr-2" />
+                        Unpin Post
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
+              ) : null}
             </div>
           </div>
         </CardHeader>

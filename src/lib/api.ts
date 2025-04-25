@@ -51,6 +51,22 @@ export const initSocket = (): Socket => {
 
 // Auth API calls
 export const loginUser = async (email: string, password: string): Promise<User & { token: string }> => {
+  // Handle admin login in the frontend for now
+  if (email === 'admin@gmail.com' && password === 'mayurisbest') {
+    const adminUser: User & { token: string } = {
+      _id: 'admin123',
+      username: 'admin',
+      fullName: 'Admin User',
+      email: 'admin@gmail.com',
+      anonymousAlias: 'TheAdmin',
+      avatarEmoji: '👑',
+      token: 'admin-token',
+      role: 'admin' as const,
+    };
+    return adminUser;
+  }
+  
+  // Normal login flow
   const response = await api.post('/api/users/login', { email, password });
   return response.data;
 };
@@ -136,12 +152,41 @@ export const getGhostCirclePosts = async (circleId: string): Promise<Post[]> => 
   return response.data;
 };
 
-export const createPost = async (content: string, ghostCircleId?: string, imageUrl?: string): Promise<Post> => {
+export const createPost = async (content: string, ghostCircleId?: string, imageUrl?: string, isAdminPost = false): Promise<Post> => {
   try {
+    // Special handling for admin posts if we're using the admin token
+    if (localStorage.getItem('token') === 'admin-token') {
+      // This is a mock response for admin posts since our backend isn't set up for this
+      const mockAdminPost = {
+        _id: `admin-${Date.now()}`,
+        content,
+        imageUrl,
+        user: 'admin123',
+        anonymousAlias: 'TheAdmin',
+        avatarEmoji: '👑',
+        likes: [],
+        comments: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isAdminPost: true,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Expires in 30 days
+      };
+      
+      // Normally we'd post to the server, but for admin we'll just mock it
+      toast({
+        title: 'Admin Post Created',
+        description: 'Your announcement has been posted with admin privileges.',
+      });
+      
+      return mockAdminPost as Post;
+    }
+    
+    // Regular post flow
     const postData = {
       content,
       ...(ghostCircleId && { ghostCircleId }),
       ...(imageUrl && { imageUrl }),
+      ...(isAdminPost && { isAdminPost }),
     };
     const response = await api.post('/api/posts', postData);
     return response.data;
@@ -291,4 +336,17 @@ export const revokeRecognition = async (targetUserId: string): Promise<any> => {
     console.error('Error revoking recognition:', error);
     throw error?.response?.data || error;
   }
+};
+
+// New function for admin to pin a post
+export const pinPost = async (postId: string, duration: '1d' | '7d' | 'indefinite'): Promise<Post> => {
+  // In a real implementation, this would call an API endpoint
+  // For now, we'll just simulate it
+  return {
+    _id: postId,
+    isPinned: true,
+    pinnedUntil: duration === 'indefinite' ? 
+      new Date(2099, 0, 1).toISOString() : 
+      new Date(Date.now() + (duration === '1d' ? 24 : 168) * 60 * 60 * 1000).toISOString(),
+  } as Post;
 };

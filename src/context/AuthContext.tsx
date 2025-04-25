@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -31,6 +32,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) {
         try {
           const userData = await getUserProfile();
+          // Check if this is the admin account
+          if (userData.email === 'admin@gmail.com') {
+            setIsAdmin(true);
+            userData.role = 'admin';
+          }
           setUser(userData);
         } catch (error) {
           console.error('Auth token invalid', error);
@@ -46,21 +52,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      
+      // Special case for admin login
+      if (email === 'admin@gmail.com' && password === 'mayurisbest') {
+        // Create a fake admin user if the credentials match
+        const adminUser = {
+          _id: 'admin123',
+          username: 'admin',
+          fullName: 'Admin User',
+          email: 'admin@gmail.com',
+          anonymousAlias: 'TheAdmin',
+          avatarEmoji: '👑',
+          role: 'admin' as const,
+        };
+        
+        // Store a fake token
+        localStorage.setItem('token', 'admin-token');
+        setUser(adminUser);
+        setIsAdmin(true);
+        
+        toast({
+          title: 'Admin login successful',
+          description: 'Welcome to the admin panel!',
+        });
+        navigate('/');
+        return;
+      }
+      
+      // Regular user login
       const data = await loginUser(email, password);
       
-      // Check if user is admin
-      const isAdminUser = email === 'admin@gmail.com' && password === 'mayurisbest';
-      setIsAdmin(isAdminUser);
-      
       localStorage.setItem('token', data.token);
-      setUser({
-        ...data,
-        role: isAdminUser ? 'admin' as const : 'user' as const
-      });
+      setUser(data);
+      setIsAdmin(false);
       
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${data.username}!${isAdminUser ? ' (Admin)' : ''}`,
+        description: `Welcome back, ${data.username}!`,
       });
       navigate('/');
     } catch (error: any) {

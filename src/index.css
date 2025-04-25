@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,6 +34,10 @@
     --ring: 255 73% 74%;
 
     --radius: 0.5rem;
+    
+    /* Admin colors */
+    --admin-border: 45 100% 50%;
+    --admin-border-hover: 45 100% 60%;
   }
 }
 
@@ -86,4 +91,32 @@
 
 .animate-scale-in {
   animation: scale-in 0.5s ease-out forwards;
+}
+
+/* Admin post styling */
+.admin-post {
+  border: 2px solid #FFC107;
+  box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+.admin-post:hover {
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+}
+
+/* Pinned post styling */
+.pinned-post {
+  border-top: 2px solid #F97316;
+  position: relative;
+}
+
+.pinned-post::before {
+  content: "📌 Pinned";
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background-color: #F97316;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
