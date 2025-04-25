@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { AuthProvider } from './context/AuthContext';
@@ -17,6 +18,7 @@ import ProfilePage from './pages/ProfilePage';
 import InvitePage from './pages/InvitePage';
 import RecognitionsPage from './pages/RecognitionsPage';
 import AdminPanel from './components/admin/AdminPanel';
+import PostDetail from './components/feed/PostDetail';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,32 +31,31 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <AuthProvider>
-          <NotificationProvider>
-            <Routes>
-              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/ghost-circles" element={<ProtectedRoute><GhostCircles /></ProtectedRoute>} />
-              <Route path="/whispers" element={<ProtectedRoute><WhispersPage /></ProtectedRoute>} />
-              <Route path="/invite" element={<ProtectedRoute><InvitePage /></ProtectedRoute>} />
-              <Route path="/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-              <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-              <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
-              <Route path="/recognitions" element={<ProtectedRoute><RecognitionsPage /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <AdminPanel />
-          </NotificationProvider>
-        </AuthProvider>
-      </Router>
-    </QueryClientProvider>
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <AuthProvider>
+            <NotificationProvider>
+              <Routes>
+                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/ghost-circles" element={<ProtectedRoute><GhostCircles /></ProtectedRoute>} />
+                <Route path="/whispers" element={<ProtectedRoute><WhispersPage /></ProtectedRoute>} />
+                <Route path="/invite" element={<ProtectedRoute><InvitePage /></ProtectedRoute>} />
+                <Route path="/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
+                <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
+                <Route path="/recognitions" element={<ProtectedRoute><RecognitionsPage /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <AdminPanel />
+            </NotificationProvider>
+          </AuthProvider>
+        </Router>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 }
-
-// Import PostDetail component
-import PostDetail from './components/feed/PostDetail';
 
 export default App;
