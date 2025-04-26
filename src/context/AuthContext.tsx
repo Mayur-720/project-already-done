@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -31,16 +30,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const userData = await getUserProfile();
-          // Check if this is the admin account
-          if (userData.email === 'admin@gmail.com') {
+          if (token === 'admin-token') {
+            // Set up admin user without making an API call
+            const adminUser = {
+              _id: 'admin123',
+              username: 'admin',
+              fullName: 'Admin User',
+              email: 'admin@gmail.com',
+              anonymousAlias: 'TheAdmin',
+              avatarEmoji: '👑',
+              role: 'admin' as const,
+            };
+            setUser(adminUser);
             setIsAdmin(true);
-            userData.role = 'admin';
+          } else {
+            // Regular user authentication
+            const userData = await getUserProfile();
+            setUser(userData);
+            setIsAdmin(false);
           }
-          setUser(userData);
         } catch (error) {
           console.error('Auth token invalid', error);
           localStorage.removeItem('token');
+          setUser(null);
+          setIsAdmin(false);
         }
       }
       setIsLoading(false);

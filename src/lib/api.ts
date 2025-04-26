@@ -2,6 +2,8 @@
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { User, Post } from '@/types/user';
+import { toast } from '@/hooks/use-toast';
+
 // Create axios instance with base URL
 // const API_URL = 'http://localhost:8900';
 const API_URL = 'https://undercover-service.onrender.com';
@@ -154,10 +156,10 @@ export const getGhostCirclePosts = async (circleId: string): Promise<Post[]> => 
 
 export const createPost = async (content: string, ghostCircleId?: string, imageUrl?: string, isAdminPost = false): Promise<Post> => {
   try {
-    // Special handling for admin posts if we're using the admin token
+    // Special handling for admin posts
     if (localStorage.getItem('token') === 'admin-token') {
-      // This is a mock response for admin posts since our backend isn't set up for this
-      const mockAdminPost = {
+      // Create a mock admin post with required Post type fields
+      const mockAdminPost: Post = {
         _id: `admin-${Date.now()}`,
         content,
         imageUrl,
@@ -168,17 +170,17 @@ export const createPost = async (content: string, ghostCircleId?: string, imageU
         comments: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        shareCount: 0,
         isAdminPost: true,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Expires in 30 days
       };
       
-      // Normally we'd post to the server, but for admin we'll just mock it
       toast({
         title: 'Admin Post Created',
         description: 'Your announcement has been posted with admin privileges.',
       });
       
-      return mockAdminPost as Post;
+      return mockAdminPost;
     }
     
     // Regular post flow
@@ -339,14 +341,21 @@ export const revokeRecognition = async (targetUserId: string): Promise<any> => {
 };
 
 // New function for admin to pin a post
-export const pinPost = async (postId: string, duration: '1d' | '7d' | 'indefinite'): Promise<Post> => {
-  // In a real implementation, this would call an API endpoint
-  // For now, we'll just simulate it
-  return {
-    _id: postId,
-    isPinned: true,
-    pinnedUntil: duration === 'indefinite' ? 
+export const pinPost = async (postId: string, duration: '1d' | '7d' | 'indefinite'): Promise<Partial<Post>> => {
+  try {
+    // In a real implementation, this would call an API endpoint
+    const expiryDate = duration === 'indefinite' ? 
       new Date(2099, 0, 1).toISOString() : 
-      new Date(Date.now() + (duration === '1d' ? 24 : 168) * 60 * 60 * 1000).toISOString(),
-  } as Post;
+      new Date(Date.now() + (duration === '1d' ? 24 : 168) * 60 * 60 * 1000).toISOString();
+    
+    return {
+      _id: postId,
+      isPinned: true,
+      pinnedUntil: expiryDate,
+      updatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error pinning post:', error);
+    throw error;
+  }
 };
