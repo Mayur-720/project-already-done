@@ -43,11 +43,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
             setUser(adminUser);
             setIsAdmin(true);
+            console.log('Admin session restored');
           } else {
             // Regular user authentication
             const userData = await getUserProfile();
             setUser(userData);
-            setIsAdmin(false);
+            setIsAdmin(userData.role === 'admin');
           }
         } catch (error) {
           console.error('Auth token invalid', error);
@@ -66,43 +67,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Special case for admin login
-      if (email === 'admin@gmail.com' && password === 'mayurisbest') {
-        // Create a fake admin user if the credentials match
-        const adminUser = {
-          _id: 'admin123',
-          username: 'admin',
-          fullName: 'Admin User',
-          email: 'admin@gmail.com',
-          anonymousAlias: 'TheAdmin',
-          avatarEmoji: '👑',
-          role: 'admin' as const,
-        };
-        
-        // Store a fake token
-        localStorage.setItem('token', 'admin-token');
-        setUser(adminUser);
-        setIsAdmin(true);
-        
-        toast({
-          title: 'Admin login successful',
-          description: 'Welcome to the admin panel!',
-        });
-        navigate('/');
-        return;
-      }
-      
-      // Regular user login
+      // Handle login (regular or admin)
       const data = await loginUser(email, password);
       
+      // Store token in localStorage
       localStorage.setItem('token', data.token);
-      setUser(data);
-      setIsAdmin(false);
       
+      // Set user data in state
+      setUser(data);
+      
+      // Check if user is admin
+      setIsAdmin(data.role === 'admin' || email === 'admin@gmail.com');
+      
+      // Show success toast
       toast({
-        title: 'Login successful',
+        title: isAdmin ? 'Admin login successful' : 'Login successful',
         description: `Welcome back, ${data.username}!`,
       });
+      
       navigate('/');
     } catch (error: any) {
       console.error('Login failed', error);
@@ -185,6 +167,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    setIsAdmin(false);
     toast({
       title: 'Logged out',
       description: 'You have been successfully logged out.',

@@ -1,4 +1,3 @@
-
 export interface User {
   _id: string;
   username: string;
@@ -27,6 +26,7 @@ export interface User {
   }[];
   createdAt?: string;
   updatedAt?: string;
+  role?: 'user' | 'admin';
 }
 
 export interface Post {
@@ -60,6 +60,9 @@ export interface Post {
   shareCount?: number;
   unreadCount?: number;
   userId?: string; // Optional field for compatibility with user.ts Post type
+  isAdminPost?: boolean; // Add admin post flag
+  isPinned?: boolean; // Add pinned status
+  pinnedUntil?: string; // Add pinned expiry date
 }
 
 export interface GhostCircle {
