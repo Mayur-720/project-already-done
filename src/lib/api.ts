@@ -3,6 +3,7 @@ import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { User, Post } from '@/types/user';
 import { toast } from '@/hooks/use-toast';
+import jwt from 'jsonwebtoken';
 
 // Create axios instance with base URL
 // const API_URL = 'http://localhost:8900';
@@ -65,15 +66,17 @@ export const initSocket = (): Socket => {
   return socket;
 };
 
-// Auth API calls
 export const loginUser = async (email: string, password: string): Promise<User & { token: string }> => {
-  // Special case for admin login - use proper JWT format
+  // Special case for admin login - generate proper JWT token
   if (email === 'admin@gmail.com' && password === 'mayurisbest') {
-    console.log('Admin login detected, creating simulated admin session');
+    console.log('Admin login detected, creating proper admin JWT token');
     
-    // Create a properly formatted JWT-like token for admin
-    // This isn't a real JWT but follows the format for testing
-    const adminToken = 'admin-token';
+    // Generate a proper JWT-like token for admin with same structure as user tokens
+    const adminToken = jwt.sign(
+      { id: 'admin123', role: 'admin' },
+      'your-secret-key',
+      { expiresIn: '30d' }
+    );
     
     const adminUser: User & { token: string } = {
       _id: 'admin123',
@@ -82,14 +85,14 @@ export const loginUser = async (email: string, password: string): Promise<User &
       email: 'admin@gmail.com',
       anonymousAlias: 'TheAdmin',
       avatarEmoji: '👑',
-      token: adminToken,
+      token: adminToken, // Use the proper JWT token
       role: 'admin' as const,
     };
     
     return adminUser;
   }
   
-  // Normal login flow
+  // Normal login flow remains unchanged
   try {
     const response = await api.post('/api/users/login', { email, password });
     return response.data;
