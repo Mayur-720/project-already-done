@@ -425,3 +425,44 @@ export const pinPost = async (postId: string, duration: '1d' | '7d' | 'indefinit
     throw error;
   }
 };
+
+export const getWhisperConversation = async (partnerId: string): Promise<{
+  messages: any[];
+  partner: {
+    _id: string;
+    anonymousAlias: string;
+    avatarEmoji: string;
+    username?: string;
+  };
+  hasRecognized: boolean;
+}> => {
+  try {
+    // Check if we're using the admin token
+    if (localStorage.getItem('token') === 'admin-token') {
+      console.log('Admin user detected, returning mock conversation data');
+      return {
+        messages: [
+          {
+            _id: 'admin-message-1',
+            sender: 'admin123',
+            content: 'This is a mock message for admin testing',
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        partner: {
+          _id: partnerId,
+          anonymousAlias: 'AdminPartner',
+          avatarEmoji: '👑',
+          username: 'adminpartner'
+        },
+        hasRecognized: true
+      };
+    }
+
+    const response = await api.get(`/api/whispers/${partnerId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching whisper conversation:', error);
+    throw error;
+  }
+};
