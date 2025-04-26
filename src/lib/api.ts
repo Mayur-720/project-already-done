@@ -3,7 +3,6 @@ import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { User, Post } from '@/types/user';
 import { toast } from '@/hooks/use-toast';
-import jwt from 'jsonwebtoken';
 
 // Create axios instance with base URL
 // const API_URL = 'http://localhost:8900';
@@ -37,7 +36,7 @@ api.interceptors.response.use(
       
       // Special handling for admin token
       const token = localStorage.getItem('token');
-      if (token === 'admin-token') {
+      if (token && token.startsWith('admin-')) {
         // For admin users, we'll keep the token but warn about the API access
         console.warn('Admin token used but API endpoint requires backend authorization. Using mock data instead.');
         // We don't remove the token for admin since frontend mock data handling should take over
@@ -67,29 +66,27 @@ export const initSocket = (): Socket => {
 };
 
 export const loginUser = async (email: string, password: string): Promise<User & { token: string }> => {
-  // Special case for admin login - generate proper JWT token
+  // Special case for admin login - using the backend JWT generation now
   if (email === 'admin@gmail.com' && password === 'mayurisbest') {
-    console.log('Admin login detected, creating proper admin JWT token');
-    
-    // Generate a proper JWT-like token for admin with same structure as user tokens
-    const adminToken = jwt.sign(
-      { id: 'admin123', role: 'admin' },
-      'your-secret-key',
-      { expiresIn: '30d' }
-    );
-    
-    const adminUser: User & { token: string } = {
-      _id: 'admin123',
-      username: 'admin',
-      fullName: 'Admin User',
-      email: 'admin@gmail.com',
-      anonymousAlias: 'TheAdmin',
-      avatarEmoji: '👑',
-      token: adminToken, // Use the proper JWT token
-      role: 'admin' as const,
-    };
-    
-    return adminUser;
+    try {
+      console.log('Admin login detected, fetching admin token from backend');
+      const response = await api.post('/api/users/login', { email, password });
+      return response.data;
+    } catch (error) {
+      console.error('Admin login failed, using fallback:', error);
+      // Fallback in case backend is not available
+      const adminUser: User & { token: string } = {
+        _id: 'admin123',
+        username: 'admin',
+        fullName: 'Admin User',
+        email: 'admin@gmail.com',
+        anonymousAlias: 'TheAdmin',
+        avatarEmoji: '👑',
+        token: 'admin-token-fallback', // Just a fallback token
+        role: 'admin' as const,
+      };
+      return adminUser;
+    }
   }
   
   // Normal login flow remains unchanged
@@ -441,7 +438,8 @@ export const getWhisperConversation = async (partnerId: string): Promise<{
 }> => {
   try {
     // Check if we're using the admin token
-    if (localStorage.getItem('token') === 'admin-token') {
+    const token = localStorage.getItem('token');
+    if (token && (token === 'admin-token' || token === 'admin-token-fallback' || token.startsWith('admin-'))) {
       console.log('Admin user detected, returning mock conversation data');
       return {
         messages: [
