@@ -10,12 +10,12 @@ const { sendPushNotification } = require('./notificationController');
 // @route   POST /api/posts
 // @access  Private
 const createPost = asyncHandler(async (req, res) => {
-  const { content, ghostCircleId, imageUrl, expiresIn } = req.body;
+  const { content, ghostCircleId, imageUrl, videoUrl, expiresIn } = req.body;
 
-  // Check if content or image is provided
-  if (!content && !imageUrl) {
+  // Check if content, image, or video is provided
+  if (!content && !imageUrl && !videoUrl) {
     res.status(400);
-    throw new Error('Please add content or image to your post');
+    throw new Error('Please add content, image, or video to your post');
   }
 
   // Calculate expiry time (default 24 hours)
@@ -27,6 +27,7 @@ const createPost = asyncHandler(async (req, res) => {
     user: req.user._id,
     content: content || '',
     imageUrl: imageUrl || '',
+    videoUrl: videoUrl || '',
     anonymousAlias: req.user.anonymousAlias,
     avatarEmoji: req.user.avatarEmoji,
     expiresAt: expiryTime,

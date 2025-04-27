@@ -1,17 +1,10 @@
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { createPost } from "@/lib/api";
-import { Ghost, ImageIcon, Loader2, X } from "lucide-react";
+import { Ghost, ImageIcon, Video, Loader2, X } from "lucide-react";
 
 interface CreatePostModalProps {
   open: boolean;
@@ -27,71 +20,94 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   ghostCircleId,
 }) => {
   const [content, setContent] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [mediaType, setMediaType] = useState<"none" | "image" | "video">("none");
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    
+    if (!isVideo && !isImage) {
       toast({
-        title: "File too large",
-        description: "Image must be under 5MB.",
+        title: "Invalid file type",
+        description: "Please upload an image or video file.",
         variant: "destructive",
       });
       return;
     }
 
-    setImageFile(file);
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024; // 50MB for video, 5MB for images
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: `${isVideo ? 'Video' : 'Image'} must be under ${maxSize / (1024 * 1024)}MB.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setMediaFile(file);
+    setMediaType(isVideo ? "video" : "image");
+    
     const reader = new FileReader();
     reader.onload = () => {
-      setImagePreview(reader.result as string);
+      setMediaPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
 
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
+  const removeMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType("none");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() && !imageFile) {
+    if (!content.trim() && !mediaFile) {
       return toast({
         title: "Content required",
-        description: "Please add some text or an image to your post.",
+        description: "Please add some text, image, or video to your post.",
         variant: "destructive",
       });
     }
 
     setIsSubmitting(true);
-    let uploadedImageUrl: string | null = null;
+    let uploadedUrl: string | null = null;
 
     try {
-      if (imageFile) {
+      if (mediaFile) {
         setIsUploading(true);
         const formData = new FormData();
-        formData.append("file", imageFile);
+        formData.append("file", mediaFile);
         formData.append("upload_preset", "undercover");
 
-        const res = await fetch("https://api.cloudinary.com/v1_1/ddtqri4py/image/upload", {
+        const res = await fetch("https://api.cloudinary.com/v1_1/ddtqri4py/auto/upload", {
           method: "POST",
           body: formData,
         });
 
         const data = await res.json();
-        uploadedImageUrl = data.secure_url;
-        console.log("Image uploaded to Cloudinary:", uploadedImageUrl);
+        uploadedUrl = data.secure_url;
         setIsUploading(false);
       }
 
-      await createPost(content, ghostCircleId, uploadedImageUrl);
+      // Create post with either image or video URL
+      await createPost(
+        content, 
+        ghostCircleId, 
+        mediaType === "image" ? uploadedUrl : undefined,
+        mediaType === "video" ? uploadedUrl : undefined
+      );
+      
       setContent("");
-      removeImage();
+      removeMedia();
 
       toast({
         title: "Post created",
@@ -143,19 +159,27 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
             onChange={(e) => setContent(e.target.value)}
           />
 
-          {imagePreview && (
+          {mediaPreview && (
             <div className="relative mt-3 border border-gray-600 rounded-md overflow-hidden">
-              <img
-                src={imagePreview}
-                alt="Image Preview"
-                className="w-full max-h-[200px] object-contain"
-              />
+              {mediaType === "image" ? (
+                <img
+                  src={mediaPreview}
+                  alt="Image Preview"
+                  className="w-full max-h-[200px] object-contain"
+                />
+              ) : (
+                <video
+                  src={mediaPreview}
+                  controls
+                  className="w-full max-h-[200px] object-contain"
+                />
+              )}
               <Button
                 type="button"
                 size="icon"
                 variant="destructive"
                 className="absolute top-2 right-2 w-8 h-8 opacity-90 hover:opacity-100"
-                onClick={removeImage}
+                onClick={removeMedia}
               >
                 <X size={16} />
               </Button>
@@ -163,24 +187,28 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
           )}
 
           <div className="flex justify-between items-center mt-2">
-            <div>
+            <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="text-purple-300 border-purple-700"
-                onClick={() => document.getElementById("image-upload")?.click()}
+                onClick={() => document.getElementById("media-upload")?.click()}
                 disabled={isUploading || isSubmitting}
               >
-                <ImageIcon className="mr-2 w-4 h-4" />
-                {isUploading ? "Uploading..." : "Add Image"}
+                {mediaType === "video" ? (
+                  <Video className="mr-2 w-4 h-4" />
+                ) : (
+                  <ImageIcon className="mr-2 w-4 h-4" />
+                )}
+                {isUploading ? "Uploading..." : "Add Media"}
               </Button>
               <input
                 type="file"
-                id="image-upload"
-                accept="image/*"
+                id="media-upload"
+                accept="image/*,video/*"
                 className="hidden"
-                onChange={handleImageUpload}
+                onChange={handleMediaUpload}
               />
             </div>
 
@@ -202,7 +230,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
             <Button
               type="submit"
               className="bg-purple-600 hover:bg-purple-700"
-              disabled={(!content.trim() && !imageFile) || isSubmitting}
+              disabled={(!content.trim() && !mediaFile) || isSubmitting}
             >
               {isSubmitting ? (
                 <>

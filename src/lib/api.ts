@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
@@ -148,12 +147,13 @@ export const getGhostCirclePosts = async (circleId: string): Promise<Post[]> => 
   return response.data;
 };
 
-export const createPost = async (content: string, ghostCircleId?: string, imageUrl?: string): Promise<Post> => {
+export const createPost = async (content: string, ghostCircleId?: string, imageUrl?: string, videoUrl?: string): Promise<Post> => {
   try {
     const postData = {
       content,
       ...(ghostCircleId && { ghostCircleId }),
-      ...(imageUrl && { imageUrl })
+      ...(imageUrl && { imageUrl }),
+      ...(videoUrl && { videoUrl })
     };
     const response = await api.post('/api/posts', postData);
     return response.data;
@@ -177,8 +177,14 @@ export const deletePost = async (postId: string): Promise<void> => {
 };
 
 export const getUserPosts = async (userId: string): Promise<Post[]> => {
-  const response = await api.get(`/api/users/userposts/${userId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/api/users/userposts/${userId}`);
+    const posts = response.data;
+    return posts.filter((post: Post) => !post.ghostCircle);
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    throw error;
+  }
 };
 
 export const getGlobalFeed = async (): Promise<Post[]> => {

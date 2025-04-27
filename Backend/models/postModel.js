@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 // Define a comment schema to be reused in both comments and replies
@@ -50,6 +51,10 @@ const postSchema = mongoose.Schema(
       type: String,
       default: '',
     },
+    videoUrl: {
+      type: String,
+      default: '',
+    },
     anonymousAlias: {
       type: String,
       required: true,
@@ -85,7 +90,7 @@ const postSchema = mongoose.Schema(
     },
     shareCount: {
       type: Number,
-      default: 0, // Initialize to 0 for new posts
+      default: 0,
     },
   },
   {

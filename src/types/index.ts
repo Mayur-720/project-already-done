@@ -34,6 +34,7 @@ export interface Post {
   user: string | User;
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   anonymousAlias: string;
   avatarEmoji: string;
   ghostCircle?: string | GhostCircle;
@@ -59,10 +60,10 @@ export interface Post {
   updatedAt: string;
   shareCount?: number;
   unreadCount?: number;
-  userId?: string; // Optional field for compatibility with user.ts Post type
-  isAdminPost?: boolean; // Add admin post flag
-  isPinned?: boolean; // Add pinned status
-  pinnedUntil?: string; // Add pinned expiry date
+  userId?: string;
+  isAdminPost?: boolean;
+  isPinned?: boolean;
+  pinnedUntil?: string;
 }
 
 export interface GhostCircle {
