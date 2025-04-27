@@ -9,7 +9,8 @@ import { Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { recognizeUser } from '@/lib/api';
-import { User, Post } from '@/types';
+import { User as AppUser, Post as AppPost } from '@/types';
+import { User } from '@/types/user';
 
 interface ProfileComponentProps {
   userId?: string;
@@ -78,13 +79,26 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     }
   };
 
-  const displayUser: User = profileUser || {
+  // Create a display user that conforms to the interface
+  const displayUser: AppUser = profileUser ? {
+    _id: profileUser._id,
+    username: profileUser.username,
+    fullName: profileUser.fullName,
+    email: profileUser.email,
+    anonymousAlias: profileUser.anonymousAlias,
+    avatarEmoji: profileUser.avatarEmoji,
+    bio: profileUser.bio,
+    recognizedUsers: profileUser.recognizedUsers || [],
+    identityRecognizers: profileUser.identityRecognizers || [],
+  } : {
     _id: userId || currentUser?._id || '',
     username: '',
     fullName: '',
     email: '',
     anonymousAlias: anonymousAlias || 'Anonymous User',
     avatarEmoji: '🎭',
+    recognizedUsers: [],
+    identityRecognizers: [],
   };
 
   if (isLoadingProfile) {
@@ -147,18 +161,26 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
             </div>
           ) : userPosts && userPosts.length > 0 ? (
             <div className="space-y-4">
-              {userPosts.map((post) => (
-                <PostCard 
-                  key={post._id} 
-                  post={post} 
-                  currentUserId={currentUser?._id}
-                  showOptions={true}
-                  onRefresh={() => {
-                    // Refetch posts when a post is updated or deleted
-                    queryClient.invalidateQueries(['userPosts', userId]);
-                  }}
-                />
-              ))}
+              {userPosts.map((post: AppPost) => {
+                // Convert to the format expected by PostCard
+                const postForCard = {
+                  ...post,
+                  user: typeof post.user === 'object' && post.user !== null ? post.user._id : post.user
+                };
+
+                return (
+                  <PostCard 
+                    key={post._id} 
+                    post={postForCard as any} 
+                    currentUserId={currentUser?._id}
+                    showOptions={true}
+                    onRefresh={() => {
+                      // Refetch posts when a post is updated or deleted
+                      queryClient.invalidateQueries({ queryKey: ['userPosts', userId] });
+                    }}
+                  />
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">

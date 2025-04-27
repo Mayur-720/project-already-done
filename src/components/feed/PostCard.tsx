@@ -64,7 +64,7 @@ interface Post {
   content: string;
   imageUrl?: string;
   videoUrl?: string;
-  likes: { user: string }[];
+  likes: { user: string; anonymousAlias: string; }[];
   comments: any[];
   createdAt: string;
   updatedAt: string;
