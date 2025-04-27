@@ -507,8 +507,20 @@ const PostCard: React.FC<PostCardProps> = ({
             <div className="mt-3 rounded-md overflow-hidden">
               <video
                 src={videoUrl}
-                controls
-                className="w-full h-auto max-h-80 object-contain"
+                autoPlay
+                muted
+                playsInline
+                loop
+                onClick={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  if (video.paused) {
+                    video.play();
+                  } else {
+                    video.pause();
+                  }
+                }}
+                className="w-full h-auto max-h-80 object-contain cursor-pointer"
+                controlsList="nodownload nofullscreen noremoteplayback"
                 onError={(e) => {
                   const target = e.target as HTMLVideoElement;
                   console.error('Video failed to load:', target.src);

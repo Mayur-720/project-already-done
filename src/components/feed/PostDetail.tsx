@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPostById } from '@/lib/api';
 import PostCard from './PostCard';
 import AppShell from '../layout/AppShell';
-import { Post } from '@/types'; 
+import { Post } from '@/types/user';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,14 +20,20 @@ const PostDetail: React.FC = () => {
   if (error) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Error loading post</div>;
   if (!post) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Post not found</div>;
 
-  // Create a compatible post object for PostCard with user as string only
-  const postForCard = {
+  // Create a compatible post object for PostCard
+  const postForCard: Post = {
     ...post,
-    // Ensure user is treated as string if it's an object with _id
-    user: typeof post.user === 'object' && post.user !== null && '_id' in post.user 
-      ? post.user._id 
-      : String(post.user)
-  } as any; // Use type assertion to bypass TypeScript checking
+    user: post.user ? (typeof post.user === 'object' ? post.user._id : post.user) : '',
+    // Ensure other required fields are present
+    likes: post.likes || [],
+    comments: post.comments || [],
+    anonymousAlias: post.anonymousAlias || 'Anonymous',
+    avatarEmoji: post.avatarEmoji || '🎭',
+    content: post.content || '',
+    createdAt: post.createdAt || new Date().toISOString(),
+    updatedAt: post.updatedAt || new Date().toISOString(),
+    expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
 
   return (
     <AppShell>
