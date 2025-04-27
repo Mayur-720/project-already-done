@@ -1,6 +1,6 @@
 
 // types/user.ts
-import { Post as BasePost } from './index';
+import { Post as BasePost, GhostCircle } from './index';
 
 export interface User {
     _id: string;
@@ -12,12 +12,14 @@ export interface User {
     bio?: string;
     referralCount?: number;
     referralCode?: string;
-    referredBy?: string;
+    referredBy?: string | User;
     identityRecognizers?: string[] | User[]; // Array of user IDs who recognized this user
     recognizedUsers?: string[] | User[]; // Array of user IDs this user recognized
     recognitionAttempts?: number;
     successfulRecognitions?: number;
     recognitionRate?: number;
+    ghostCircles?: string[] | GhostCircle[]; // Explicitly define as array type
+    friends?: string[] | User[];
     claimedRewards?: Array<{
       tierLevel: number;
       rewardType: 'badge' | 'cash' | 'premium';
@@ -26,9 +28,10 @@ export interface User {
       paymentDetails?: string;
       status: 'pending' | 'completed' | 'failed';
     }>;
-    friends?: string[]; // For addFriend feature
-    [x: string]: string | number | string[] | Array<{ tierLevel: number; rewardType: 'badge' | 'cash' | 'premium'; claimedAt: string; paymentMethod?: 'paypal' | 'venmo' | 'giftcard'; paymentDetails?: string; status: 'pending' | 'completed' | 'failed'; }> | undefined | User[]; // Permissive index signature
-  }
+    createdAt?: string;
+    updatedAt?: string;
+    role?: 'user' | 'admin';
+}
 
 // Re-export the Post type from index.ts
 export type Post = BasePost;

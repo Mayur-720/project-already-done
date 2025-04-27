@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserPosts, getUserProfile } from '@/lib/api';
 import PostCard from '../feed/PostCard';
@@ -90,7 +90,8 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     recognizedUsers: profileUser.recognizedUsers || [],
     identityRecognizers: profileUser.identityRecognizers || [],
     friends: profileUser.friends || [],
-    ghostCircles: profileUser.ghostCircles || [],
+    // Ensure ghostCircles is always an array
+    ghostCircles: Array.isArray(profileUser.ghostCircles) ? profileUser.ghostCircles : [],
     referralCode: profileUser.referralCode || '',
     referralCount: profileUser.referralCount || 0,
     referredBy: profileUser.referredBy || '',
@@ -111,7 +112,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     recognizedUsers: [],
     identityRecognizers: [],
     friends: [],
-    ghostCircles: [],
+    ghostCircles: [], // This is now explicitly an empty array
     referralCode: '',
     referralCount: 0,
     referredBy: '',
@@ -194,7 +195,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
                 return (
                   <PostCard 
                     key={post._id} 
-                    post={postForCard} 
+                    post={postForCard as Post}
                     currentUserId={currentUser?._id}
                     showOptions={true}
                     onRefresh={() => {
