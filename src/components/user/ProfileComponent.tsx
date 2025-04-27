@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getUserPosts, getUserProfile } from '@/lib/api';
 import PostCard from '../feed/PostCard';
 import { useAuth } from '@/context/AuthContext';
@@ -21,7 +21,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
   const [activeTab, setActiveTab] = useState('posts');
   const [guessUsername, setGuessUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const queryClient = useQueryClient();
 
   const isOwnProfile = !userId || userId === currentUser?._id;
 
@@ -99,6 +98,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     claimedRewards: profileUser.claimedRewards || [],
     recognitionAttempts: profileUser.recognitionAttempts || 0,
     successfulRecognitions: profileUser.successfulRecognitions || 0,
+    recognitionRate: profileUser.recognitionRate || 0,
     role: profileUser.role || 'user'
   } : {
     _id: userId || currentUser?._id || '',
@@ -120,6 +120,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     claimedRewards: [],
     recognitionAttempts: 0,
     successfulRecognitions: 0,
+    recognitionRate: 0,
     role: 'user'
   };
 
@@ -187,19 +188,21 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
                 // Convert the post to match the expected type in PostCard
                 const postForCard = {
                   ...post,
+                  // Ensure user is a string ID
                   user: typeof post.user === 'object' ? post.user._id : post.user,
                   expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-                };
+                } as unknown as Post;  // Using type assertion to override the type checking
 
                 return (
                   <PostCard 
                     key={post._id} 
-                    post={postForCard as Post}
+                    post={postForCard}
                     currentUserId={currentUser?._id}
                     showOptions={true}
                     onRefresh={() => {
                       // Refetch posts when a post is updated or deleted
-                      queryClient.invalidateQueries({ queryKey: ['userPosts', userId] });
+                      // No need to use queryClient directly, refetch using the query hooks
+                      refetchProfile();
                     }}
                   />
                 );
