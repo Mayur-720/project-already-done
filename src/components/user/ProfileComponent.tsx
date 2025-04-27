@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserPosts, getUserProfile } from '@/lib/api';
 import PostCard from '../feed/PostCard';
 import { useAuth } from '@/context/AuthContext';
@@ -9,7 +9,7 @@ import { Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { recognizeUser } from '@/lib/api';
-import { User, Post } from '@/types';
+import { User, Post, GhostCircle } from '@/types';
 
 interface ProfileComponentProps {
   userId?: string;
@@ -21,7 +21,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
   const [activeTab, setActiveTab] = useState('posts');
   const [guessUsername, setGuessUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const queryClient = useQuery().queryClient;
+  const queryClient = useQueryClient();
 
   const isOwnProfile = !userId || userId === currentUser?._id;
 
@@ -86,16 +86,20 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     email: profileUser.email,
     anonymousAlias: profileUser.anonymousAlias,
     avatarEmoji: profileUser.avatarEmoji,
-    bio: profileUser.bio,
+    bio: profileUser.bio || '',
     recognizedUsers: profileUser.recognizedUsers || [],
     identityRecognizers: profileUser.identityRecognizers || [],
     friends: profileUser.friends || [],
     ghostCircles: profileUser.ghostCircles || [],
-    referralCode: profileUser.referralCode,
-    referralCount: profileUser.referralCount,
-    referredBy: profileUser.referredBy,
-    createdAt: profileUser.createdAt,
-    updatedAt: profileUser.updatedAt,
+    referralCode: profileUser.referralCode || '',
+    referralCount: profileUser.referralCount || 0,
+    referredBy: profileUser.referredBy || '',
+    createdAt: profileUser.createdAt || '',
+    updatedAt: profileUser.updatedAt || '',
+    claimedRewards: profileUser.claimedRewards || [],
+    recognitionAttempts: profileUser.recognitionAttempts || 0,
+    successfulRecognitions: profileUser.successfulRecognitions || 0,
+    role: profileUser.role || 'user'
   } : {
     _id: userId || currentUser?._id || '',
     username: '',
@@ -103,10 +107,20 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     email: '',
     anonymousAlias: anonymousAlias || 'Anonymous User',
     avatarEmoji: '🎭',
+    bio: '',
     recognizedUsers: [],
     identityRecognizers: [],
     friends: [],
     ghostCircles: [],
+    referralCode: '',
+    referralCount: 0,
+    referredBy: '',
+    createdAt: '',
+    updatedAt: '',
+    claimedRewards: [],
+    recognitionAttempts: 0,
+    successfulRecognitions: 0,
+    role: 'user'
   };
 
   if (isLoadingProfile) {
@@ -169,12 +183,12 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
             </div>
           ) : userPosts && userPosts.length > 0 ? (
             <div className="space-y-4">
-              {userPosts.map((post) => {
-                // Convert to the format expected by PostCard
+              {userPosts.map((post: any) => {
+                // Convert the post to match the expected type in PostCard
                 const postForCard = {
                   ...post,
-                  user: typeof post.user === 'object' && post.user !== null ? post.user._id : post.user,
-                  expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Add default expiresAt if missing
+                  user: typeof post.user === 'object' ? post.user._id : post.user,
+                  expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
                 };
 
                 return (

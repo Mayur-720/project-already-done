@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,7 +32,8 @@ interface NotificationsDropdownProps {
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ 
   open, 
   onOpenChange, 
-  onAllRead 
+  onAllRead,
+  className
 }) => {
   const { unreadCount, markAllNotificationsAsRead } = useNotifications();
   const queryClient = useQueryClient();
