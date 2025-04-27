@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getUserPosts, getUserProfile } from '@/lib/api';
@@ -35,7 +34,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     enabled: !!userId,
   });
 
-  // Filter out ghost circle posts client-side as well
   const { data: userPosts, isLoading: isLoadingPosts } = useQuery({
     queryKey: ['userPosts', userId],
     queryFn: () => getUserPosts(userId || ''),
@@ -77,7 +75,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     }
   };
 
-  // Create a display user that conforms to the User interface from @/types
   const displayUser: User = profileUser ? {
     _id: profileUser._id,
     username: profileUser.username,
@@ -183,9 +180,8 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
               <Loader className="h-8 w-8 animate-spin text-purple-500" />
             </div>
           ) : userPosts && userPosts.length > 0 ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userPosts.map((post: any) => {
-                // Create a new post object with user as string ID to match PostCard's expected type
                 const postForCard: Post = {
                   _id: post._id,
                   user: typeof post.user === 'object' ? post.user._id : post.user,
@@ -199,7 +195,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
                   updatedAt: post.updatedAt,
                   imageUrl: post.imageUrl,
                   videoUrl: post.videoUrl,
-                  shareCount: post.shareCount || 0
+                  shareCount: post.shareCount || 0,
                 };
 
                 return (
@@ -209,7 +205,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
                     currentUserId={currentUser?._id}
                     showOptions={true}
                     onRefresh={() => {
-                      // Refetch posts when a post is updated or deleted
                       refetchProfile();
                     }}
                   />
@@ -224,28 +219,26 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
         </TabsContent>
         
         <TabsContent value="about">
-          <div className="bg-card rounded-lg p-6 shadow-md border border-border">
-            {isOwnProfile ? (
-              <>
-                <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
-                <div className="space-y-2">
-                  <p><span className="font-medium">Username:</span> {currentUser?.username}</p>
-                  <p><span className="font-medium">Full Name:</span> {currentUser?.fullName}</p>
-                  <p><span className="font-medium">Anonymous Alias:</span> {currentUser?.anonymousAlias}</p>
-                  <p><span className="font-medium">Avatar Emoji:</span> {currentUser?.avatarEmoji}</p>
-                  <p><span className="font-medium">Bio:</span> {currentUser?.bio || 'No bio provided'}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 className="text-xl font-semibold mb-4">Anonymous Profile</h2>
-                <div className="space-y-2">
-                  <p><span className="font-medium">Anonymous Alias:</span> {displayUser.anonymousAlias}</p>
-                  <p><span className="font-medium">Avatar Emoji:</span> {displayUser.avatarEmoji}</p>
-                </div>
-              </>
-            )}
-          </div>
+          {isOwnProfile ? (
+            <>
+              <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
+              <div className="space-y-2">
+                <p><span className="font-medium">Username:</span> {currentUser?.username}</p>
+                <p><span className="font-medium">Full Name:</span> {currentUser?.fullName}</p>
+                <p><span className="font-medium">Anonymous Alias:</span> {currentUser?.anonymousAlias}</p>
+                <p><span className="font-medium">Avatar Emoji:</span> {currentUser?.avatarEmoji}</p>
+                <p><span className="font-medium">Bio:</span> {currentUser?.bio || 'No bio provided'}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold mb-4">Anonymous Profile</h2>
+              <div className="space-y-2">
+                <p><span className="font-medium">Anonymous Alias:</span> {displayUser.anonymousAlias}</p>
+                <p><span className="font-medium">Avatar Emoji:</span> {displayUser.avatarEmoji}</p>
+              </div>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

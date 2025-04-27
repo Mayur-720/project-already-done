@@ -12,6 +12,8 @@ import {
   Share2,
   MousePointer2,
   Pin,
+  Play,
+  Pause
 } from 'lucide-react';
 import {
   Card,
@@ -110,6 +112,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const [isPinned, setIsPinned] = useState(post.isPinned || false);
   const [pinDuration, setPinDuration] = useState<string>('1d');
+  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
 
   const isOwnPost = post.user === currentUserId;
   const isAdminPost = post.isAdminPost || post.anonymousAlias === 'TheAdmin';
@@ -504,7 +507,7 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
           
           {videoUrl && (
-            <div className="mt-3 rounded-md overflow-hidden">
+            <div className="mt-3 rounded-md overflow-hidden relative group">
               <video
                 src={videoUrl}
                 autoPlay
@@ -515,8 +518,10 @@ const PostCard: React.FC<PostCardProps> = ({
                   const video = e.target as HTMLVideoElement;
                   if (video.paused) {
                     video.play();
+                    setIsVideoPlaying(true);
                   } else {
                     video.pause();
+                    setIsVideoPlaying(false);
                   }
                 }}
                 className="w-full h-auto max-h-80 object-contain cursor-pointer"
@@ -526,6 +531,13 @@ const PostCard: React.FC<PostCardProps> = ({
                   console.error('Video failed to load:', target.src);
                 }}
               />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {!isVideoPlaying ? (
+                  <Play className="w-16 h-16 text-white/80 animate-scale-in" />
+                ) : (
+                  <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
+                )}
+              </div>
             </div>
           )}
         </CardContent>

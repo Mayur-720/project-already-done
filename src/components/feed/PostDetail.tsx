@@ -22,17 +22,18 @@ const PostDetail: React.FC = () => {
 
   // Create a compatible post object for PostCard
   const postForCard: Post = {
-    ...post,
-    user: post.user ? (typeof post.user === 'object' ? post.user._id : post.user) : '',
-    // Ensure other required fields are present
-    likes: post.likes || [],
-    comments: post.comments || [],
+    _id: post._id,
+    user: post.user ? (typeof post.user === 'object' ? post.user._id : String(post.user)) : '',
+    content: post.content || '',
     anonymousAlias: post.anonymousAlias || 'Anonymous',
     avatarEmoji: post.avatarEmoji || '🎭',
-    content: post.content || '',
+    likes: post.likes || [],
+    comments: post.comments || [],
     createdAt: post.createdAt || new Date().toISOString(),
     updatedAt: post.updatedAt || new Date().toISOString(),
     expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    imageUrl: post.imageUrl,
+    videoUrl: post.videoUrl,
   };
 
   return (
