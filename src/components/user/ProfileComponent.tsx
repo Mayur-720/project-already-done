@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserPosts, getUserProfile } from '@/lib/api';
 import PostCard from '../feed/PostCard';
 import { useAuth } from '@/context/AuthContext';
@@ -8,7 +9,7 @@ import { Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { recognizeUser } from '@/lib/api';
-import { User } from '@/types';
+import { User, Post } from '@/types';
 
 interface ProfileComponentProps {
   userId?: string;
@@ -20,6 +21,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
   const [activeTab, setActiveTab] = useState('posts');
   const [guessUsername, setGuessUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const isOwnProfile = !userId || userId === currentUser?._id;
 
@@ -153,7 +155,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
                   showOptions={true}
                   onRefresh={() => {
                     // Refetch posts when a post is updated or deleted
-                    const queryClient = useQueryClient();
                     queryClient.invalidateQueries(['userPosts', userId]);
                   }}
                 />

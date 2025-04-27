@@ -1,8 +1,9 @@
+
 // This is a partial update since we don't have the full file content
 // Add this implementation to improve notification loading
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { getUserNotifications, markAllNotificationsAsRead, markNotificationAsRead } from '@/lib/api';
+import { getUserNotifications, markAllNotificationsAsRead, markNotificationAsRead } from '@/lib/api-notification';
 import { enableNotifications as enableNotificationsAPI, disableSubscription } from '@/lib/api-notification';
 import { User } from '@/types';
 

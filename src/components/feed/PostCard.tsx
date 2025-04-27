@@ -68,10 +68,12 @@ interface Post {
   comments: any[];
   createdAt: string;
   updatedAt: string;
+  expiresAt: string;
   shareCount?: number;
   isAdminPost?: boolean;
   isPinned?: boolean;
   pinnedUntil?: string;
+  ghostCircle?: string;
 }
 
 interface PostCardProps {

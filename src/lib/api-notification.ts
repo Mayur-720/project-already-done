@@ -38,7 +38,7 @@ export const enableNotifications = async () => {
 
     // Register service worker if needed
     if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      const registration = await navigator.serviceWorker.ready;
       console.info('Service Worker registered with scope:', registration.scope);
       
       // Get VAPID key

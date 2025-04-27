@@ -27,7 +27,7 @@ interface NotificationsDropdownProps {
 }
 
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className }) => {
-  const { unreadCount, markAllAsRead } = useNotifications();
+  const { unreadCount, markAllNotificationsAsRead } = useNotifications();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -94,7 +94,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
               size="sm" 
               onClick={(e) => {
                 e.stopPropagation();
-                markAllAsRead();
+                markAllNotificationsAsRead();
               }}
               className="text-xs h-7"
             >
