@@ -1,86 +1,88 @@
 
 import { api } from './api';
+import { Notification } from '@/types';
 
-// Get VAPID public key
-export const getVapidPublicKey = async () => {
-  const response = await api.get('/api/notifications/vapid-public-key');
-  return response.data;
-};
-
-// Save push subscription
-export const saveSubscription = async (subscription: PushSubscription) => {
-  const response = await api.post('/api/notifications/subscription', { subscription });
-  return response.data;
-};
-
-// Subscribe to notifications
-export const subscribeToNotifications = async () => {
-  // This is handled client-side with the service worker
-  console.log('Subscribing to notifications');
-  return { success: true };
-};
-
-// Unsubscribe from notifications
-export const unsubscribeFromNotifications = async () => {
-  // This is handled client-side with the service worker
-  console.log('Unsubscribing from notifications');
-  return { success: true };
-};
-
-// Enable notifications
-export const enableNotifications = async () => {
+// Get user notifications
+export const getUserNotifications = async (): Promise<Notification[]> => {
   try {
-    // Request notification permission
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      throw new Error('Notification permission denied');
-    }
+    const response = await api.get('/api/notifications');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return [];
+  }
+};
 
-    // Register service worker if needed
-    if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.ready;
-      console.info('Service Worker registered with scope:', registration.scope);
-      
-      // Get VAPID key
-      const { publicKey } = await getVapidPublicKey();
-      
-      // Subscribe to push notifications
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: publicKey,
-      });
-      
-      // Save subscription on server
-      await saveSubscription(subscription);
-      return true;
+// Mark notification as read
+export const markNotificationAsRead = async (id: string): Promise<void> => {
+  try {
+    await api.put(`/api/notifications/${id}/read`);
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
+};
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = async (): Promise<void> => {
+  try {
+    await api.put('/api/notifications/read-all');
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    throw error;
+  }
+};
+
+// Enable push notifications
+export const enableNotifications = async (): Promise<boolean> => {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('Push notifications not supported in this browser');
+      return false;
     }
-    return false;
+    
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(process.env.VAPID_PUBLIC_KEY || '')
+    });
+    
+    const response = await api.post('/api/notifications/subscribe', {
+      subscription: JSON.stringify(subscription)
+    });
+    
+    return response.status === 200;
   } catch (error) {
     console.error('Failed to enable notifications:', error);
     return false;
   }
 };
 
-// Disable push subscription
-export const disableSubscription = async (endpoint: string) => {
-  const response = await api.post('/api/notifications/subscription/disable', { endpoint });
-  return response.data;
+// Disable push notifications
+export const disableSubscription = async (endpoint: string): Promise<void> => {
+  try {
+    await api.delete('/api/notifications/unsubscribe', {
+      data: { endpoint }
+    });
+  } catch (error) {
+    console.error('Failed to disable subscription:', error);
+    throw error;
+  }
 };
 
-// Get user notifications
-export const getUserNotifications = async () => {
-  const response = await api.get('/api/notifications');
-  return response.data;
-};
-
-// Mark notification as read
-export const markNotificationAsRead = async (notificationId: string) => {
-  const response = await api.put(`/api/notifications/${notificationId}/read`);
-  return response.data;
-};
-
-// Mark all notifications as read
-export const markAllNotificationsAsRead = async () => {
-  const response = await api.put('/api/notifications/read-all');
-  return response.data;
-};
+// Helper function to convert base64 to Uint8Array
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  
+  return outputArray;
+}

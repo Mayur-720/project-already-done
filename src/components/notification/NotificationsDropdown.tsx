@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,9 +23,16 @@ import { Notification } from '@/types';
 
 interface NotificationsDropdownProps {
   className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onAllRead?: () => void;
 }
 
-const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className }) => {
+const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ 
+  open, 
+  onOpenChange, 
+  onAllRead 
+}) => {
   const { unreadCount, markAllNotificationsAsRead } = useNotifications();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -66,8 +72,17 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      if (onAllRead) onAllRead();
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -94,7 +109,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ className
               size="sm" 
               onClick={(e) => {
                 e.stopPropagation();
-                markAllNotificationsAsRead();
+                handleMarkAllAsRead();
               }}
               className="text-xs h-7"
             >
