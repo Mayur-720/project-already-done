@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/context/AuthContext';
 import { createPost } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
-import { PinIcon, SendIcon } from 'lucide-react';
+import { SendIcon } from 'lucide-react';
 
 const AdminPanel = () => {
   const { user, isAdmin } = useAuth();
@@ -30,13 +30,12 @@ const AdminPanel = () => {
 
     try {
       setIsSubmitting(true);
-      // Add isAdminPost=true flag to mark this as an admin post
       await createPost(postContent, undefined, imageUrl);
       setPostContent('');
       setImageUrl('');
       toast({
         title: 'Post created',
-        description: 'Your admin post has been created successfully.',
+        description: 'Your post has been created successfully.',
       });
     } catch (error) {
       toast({
@@ -68,7 +67,7 @@ const AdminPanel = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="border-b border-border pb-4">
-                <h3 className="font-semibold mb-2">Create Admin Post</h3>
+                <h3 className="font-semibold mb-2">Create Post</h3>
                 <form onSubmit={handleCreatePost} className="space-y-3">
                   <Textarea
                     placeholder="Write your announcement here..."
@@ -87,16 +86,9 @@ const AdminPanel = () => {
                     className="bg-purple-700 hover:bg-purple-800"
                   >
                     <SendIcon className="w-4 h-4 mr-2" />
-                    Post as Admin
+                    Post
                   </Button>
                 </form>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Pin Posts</h3>
-                <p className="text-sm text-muted-foreground">
-                  You can pin posts from the feed by clicking the three dots menu on any post and selecting "Pin Post".
-                </p>
               </div>
             </CardContent>
           </Card>

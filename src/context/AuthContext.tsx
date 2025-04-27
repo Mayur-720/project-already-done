@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, registerUser, getUserProfile, updateUserProfile } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
-import { User } from '@/types/user'; // Import shared User type
+import { User } from '@/types/user';
 
 interface AuthContextType {
   user: User | null;
@@ -30,26 +29,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          if (token === 'admin-token') {
-            // Set up admin user without making an API call
-            const adminUser = {
-              _id: 'admin123',
-              username: 'admin',
-              fullName: 'Admin User',
-              email: 'admin@gmail.com',
-              anonymousAlias: 'TheAdmin',
-              avatarEmoji: '👑',
-              role: 'admin' as const,
-            };
-            setUser(adminUser);
-            setIsAdmin(true);
-            console.log('Admin session restored');
-          } else {
-            // Regular user authentication
-            const userData = await getUserProfile();
-            setUser(userData);
-            setIsAdmin(userData.role === 'admin');
-          }
+          const userData = await getUserProfile();
+          setUser(userData);
+          setIsAdmin(userData.role === 'admin');
         } catch (error) {
           console.error('Auth token invalid', error);
           localStorage.removeItem('token');
@@ -67,21 +49,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Handle login (regular or admin)
       const data = await loginUser(email, password);
       
-      // Store token in localStorage
       localStorage.setItem('token', data.token);
-      
-      // Set user data in state
       setUser(data);
+      setIsAdmin(data.role === 'admin');
       
-      // Check if user is admin
-      setIsAdmin(data.role === 'admin' || email === 'admin@gmail.com');
-      
-      // Show success toast
       toast({
-        title: isAdmin ? 'Admin login successful' : 'Login successful',
+        title: 'Login successful',
         description: `Welcome back, ${data.username}!`,
       });
       
