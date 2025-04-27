@@ -63,6 +63,7 @@ interface Post {
   avatarEmoji: string;
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   likes: { user: string }[];
   comments: any[];
   createdAt: string;
@@ -376,6 +377,12 @@ const PostCard: React.FC<PostCardProps> = ({
       ? post.imageUrl
       : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${post.imageUrl}`
     : null;
+    
+  const videoUrl = post.videoUrl
+    ? post.videoUrl.startsWith('http')
+      ? post.videoUrl
+      : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${post.videoUrl}`
+    : null;
 
   const cardClassName = `border shadow-md hover:shadow-lg transition-shadow mb-4 ${
     isAdminPost ? 'admin-post' : 'border-undercover-purple/20 bg-card'
@@ -489,6 +496,20 @@ const PostCard: React.FC<PostCardProps> = ({
                   console.error('Image failed to load:', target.src);
                   target.onerror = null;
                   target.src = '/placeholder.svg';
+                }}
+              />
+            </div>
+          )}
+          
+          {videoUrl && (
+            <div className="mt-3 rounded-md overflow-hidden">
+              <video
+                src={videoUrl}
+                controls
+                className="w-full h-auto max-h-80 object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLVideoElement;
+                  console.error('Video failed to load:', target.src);
                 }}
               />
             </div>

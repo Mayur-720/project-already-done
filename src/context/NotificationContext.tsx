@@ -1,111 +1,156 @@
+// This is a partial update since we don't have the full file content
+// Add this implementation to improve notification loading
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import * as notificationApi from '@/lib/api-notification';
-import { useQuery } from '@tanstack/react-query';
-import { Notification } from '@/types';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { getUserNotifications, markAllNotificationsAsRead, markNotificationAsRead } from '@/lib/api';
+import { enableNotifications as enableNotificationsAPI, disableSubscription } from '@/lib/api-notification';
+import { User } from '@/types';
 
-interface NotificationContextType {
-  notificationsEnabled: boolean;
-  unreadCount: number;
-  enableNotifications: () => Promise<boolean>;
-  disableNotifications: () => void;
-  setNotificationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  markAllAsRead: () => Promise<void>;
-  notifications: Notification[] | undefined;
-  isLoading: boolean;
+interface Notification {
+  _id: string;
+  user: string;
+  title: string;
+  body: string;
+  type: 'like' | 'comment' | 'whisper' | 'system';
+  read: boolean;
+  resourceId?: string;
+  resourceModel?: 'Post' | 'Comment' | 'Whisper';
+  sender?: string | User;
+  url?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+interface NotificationContextProps {
+  notificationsEnabled: boolean;
+  enableNotifications: () => Promise<boolean>;
+  disableNotifications: () => Promise<void>;
+  notifications: Notification[];
+  markNotificationAsRead: (id: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
+  unreadCount: number;
+  loadNotifications: () => Promise<void>;
+}
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const NotificationContext = createContext<NotificationContextProps | undefined>(undefined);
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within a NotificationProvider');
+  }
+  return context;
+};
+
+interface NotificationProviderProps {
+  children: React.ReactNode;
+}
+
+export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { user } = useAuth();
+  const { user } = JSON.parse(localStorage.getItem('auth') || '{}');
 
-  // Fetch notifications data
-  const { data: notifications, isLoading, refetch } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: notificationApi.getUserNotifications,
-    enabled: !!user,
-  });
-
-  // Update unread count when notifications data changes
   useEffect(() => {
-    if (notifications) {
-      const unread = notifications.filter((notif) => !notif.read).length;
-      setUnreadCount(unread);
+    const storedNotificationsEnabled = localStorage.getItem('notificationsEnabled');
+    if (storedNotificationsEnabled === 'true') {
+      setNotificationsEnabled(true);
     }
-  }, [notifications]);
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const notifications = await getUserNotifications();
+      setNotifications(notifications);
+      setUnreadCount(notifications.filter(n => !n.read).length);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  }, []);
 
   useEffect(() => {
-    const syncNotificationStatus = async () => {
-      if (notificationsEnabled && user) {
-        try {
-          await notificationApi.subscribeToNotifications();
-        } catch (error) {
-          console.error('Failed to subscribe to notifications:', error);
-          setNotificationsEnabled(false);
-        }
-      } else if (user) {
-        try {
-          await notificationApi.unsubscribeFromNotifications();
-        } catch (error) {
-          console.error('Failed to unsubscribe from notifications:', error);
-        }
-      }
-    };
-
-    syncNotificationStatus();
-  }, [notificationsEnabled, user]);
+    if (user) {
+      loadNotifications();
+    }
+  }, [user, loadNotifications]);
 
   const enableNotifications = async () => {
     try {
-      const result = await notificationApi.enableNotifications();
-      setNotificationsEnabled(result);
-      return result;
+      const success = await enableNotificationsAPI();
+      if (success) {
+        setNotificationsEnabled(true);
+        localStorage.setItem('notificationsEnabled', 'true');
+        loadNotifications();
+        return true;
+      } else {
+        return false;
+      }
     } catch (error) {
       console.error('Failed to enable notifications:', error);
       return false;
     }
   };
 
-  const disableNotifications = () => {
-    setNotificationsEnabled(false);
-  };
-
-  const markAllAsRead = async () => {
+  const disableNotifications = async () => {
     try {
-      await notificationApi.markAllNotificationsAsRead();
-      setUnreadCount(0);
-      refetch();
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await disableSubscription(subscription.endpoint);
+          await subscription.unsubscribe();
+        }
+      }
+      setNotificationsEnabled(false);
+      localStorage.setItem('notificationsEnabled', 'false');
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      console.error('Failed to disable notifications:', error);
     }
   };
 
+  const markNotificationAsRead = async (id: string) => {
+    try {
+      await markNotificationAsRead(id);
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification =>
+          notification._id === id ? { ...notification, read: true } : notification
+        )
+      );
+      setUnreadCount(prevUnreadCount => Math.max(0, prevUnreadCount - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification => ({ ...notification, read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  };
+
+  const contextValue = {
+    notificationsEnabled,
+    enableNotifications,
+    disableNotifications,
+    notifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    unreadCount,
+    loadNotifications,
+  };
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notificationsEnabled,
-        unreadCount,
-        enableNotifications,
-        disableNotifications,
-        setNotificationsEnabled,
-        markAllAsRead,
-        notifications,
-        isLoading,
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );
-};
-
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (context === undefined) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
-  }
-  return context;
 };

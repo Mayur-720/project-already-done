@@ -163,11 +163,17 @@ export const createPost = async (content: string, ghostCircleId?: string, imageU
   }
 };
 
-export const updatePost = async (postId: string, content: string, imageUrl?: string): Promise<Post> => {
-  const postData: { content: string; imageUrl?: string } = { content };
+export const updatePost = async (postId: string, content: string, imageUrl?: string, videoUrl?: string): Promise<Post> => {
+  const postData: { content: string; imageUrl?: string; videoUrl?: string } = { content };
+  
   if (imageUrl !== undefined) {
     postData.imageUrl = imageUrl;
   }
+  
+  if (videoUrl !== undefined) {
+    postData.videoUrl = videoUrl;
+  }
+  
   const response = await api.put(`/api/posts/${postId}`, postData);
   return response.data;
 };

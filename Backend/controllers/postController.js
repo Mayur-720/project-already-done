@@ -1,3 +1,4 @@
+
 const asyncHandler = require('express-async-handler');
 const Post = require('../models/postModel');
 const User = require('../models/userModel');
@@ -112,7 +113,7 @@ const deletepost = asyncHandler(async (req, res) => {
 // @route   PUT /api/posts/:id
 // @access  Private
 const updatePost = asyncHandler(async (req, res) => {
-  const { content, imageUrl } = req.body;
+  const { content, imageUrl, videoUrl } = req.body;
   const postId = req.params.id;
 
   // Find the post
@@ -132,6 +133,7 @@ const updatePost = asyncHandler(async (req, res) => {
   // Update post fields
   if (content !== undefined) post.content = content;
   if (imageUrl !== undefined) post.imageUrl = imageUrl;
+  if (videoUrl !== undefined) post.videoUrl = videoUrl;
 
   // Save updated post
   const updatedPost = await post.save();
