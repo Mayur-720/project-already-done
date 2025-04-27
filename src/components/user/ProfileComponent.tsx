@@ -185,13 +185,22 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
           ) : userPosts && userPosts.length > 0 ? (
             <div className="space-y-4">
               {userPosts.map((post: any) => {
-                // Convert the post to match the expected type in PostCard
-                const postForCard = {
-                  ...post,
-                  // Ensure user is a string ID
+                // Create a new post object with user as string ID to match PostCard's expected type
+                const postForCard: Post = {
+                  _id: post._id,
                   user: typeof post.user === 'object' ? post.user._id : post.user,
-                  expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-                } as unknown as Post;  // Using type assertion to override the type checking
+                  content: post.content,
+                  anonymousAlias: post.anonymousAlias,
+                  avatarEmoji: post.avatarEmoji,
+                  likes: post.likes || [],
+                  comments: post.comments || [],
+                  expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                  createdAt: post.createdAt,
+                  updatedAt: post.updatedAt,
+                  imageUrl: post.imageUrl,
+                  videoUrl: post.videoUrl,
+                  shareCount: post.shareCount || 0
+                };
 
                 return (
                   <PostCard 
@@ -201,7 +210,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
                     showOptions={true}
                     onRefresh={() => {
                       // Refetch posts when a post is updated or deleted
-                      // No need to use queryClient directly, refetch using the query hooks
                       refetchProfile();
                     }}
                   />
