@@ -9,7 +9,7 @@ import { Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { recognizeUser } from '@/lib/api';
-import { User, Post, GhostCircle } from '@/types';
+import { User, Post } from '@/types';
 
 interface ProfileComponentProps {
   userId?: string;
@@ -90,7 +90,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     recognizedUsers: profileUser.recognizedUsers || [],
     identityRecognizers: profileUser.identityRecognizers || [],
     friends: profileUser.friends || [],
-    // Ensure ghostCircles is always an array
     ghostCircles: Array.isArray(profileUser.ghostCircles) ? profileUser.ghostCircles : [],
     referralCode: profileUser.referralCode || '',
     referralCount: profileUser.referralCount || 0,
@@ -112,7 +111,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, anonymousAl
     recognizedUsers: [],
     identityRecognizers: [],
     friends: [],
-    ghostCircles: [], // This is now explicitly an empty array
+    ghostCircles: [], 
     referralCode: '',
     referralCount: 0,
     referredBy: '',

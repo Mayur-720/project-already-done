@@ -1,3 +1,4 @@
+
 export interface User {
   _id: string;
   username: string;
@@ -15,6 +16,7 @@ export interface User {
   identityRecognizers?: string[] | User[];
   recognitionAttempts?: number;
   successfulRecognitions?: number;
+  recognitionRate?: number;
   recognitionRevocations?: string[] | User[];
   claimedRewards?: {
     tierLevel: number;
