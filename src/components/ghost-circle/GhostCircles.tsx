@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { getMyGhostCircles } from '@/lib/api';
 import AppShell from '@/components/layout/AppShell';
@@ -37,6 +38,22 @@ const GhostCircles: React.FC = () => {
 
   const handleBackToCircles = () => {
     setSelectedCircleId(null);
+  };
+
+  const handleCreateSuccess = () => {
+    // Refresh the circles list after creating a new one
+    const fetchGhostCircles = async () => {
+      try {
+        const data = await getMyGhostCircles();
+        if (data && Array.isArray(data)) {
+          setCircles(data);
+        }
+      } catch (error) {
+        console.error('Error fetching ghost circles:', error);
+      }
+    };
+    
+    fetchGhostCircles();
   };
 
   const renderCircles = () => {
@@ -86,7 +103,11 @@ const GhostCircles: React.FC = () => {
               </Button>
             </div>
             {renderCircles()}
-            <CreateGhostCircleModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} />
+            <CreateGhostCircleModal 
+              open={isCreateModalOpen} 
+              onOpenChange={setIsCreateModalOpen} 
+              onSuccess={handleCreateSuccess}
+            />
           </>
         )}
       </div>

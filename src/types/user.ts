@@ -4,10 +4,11 @@ export interface User {
   username: string;
   email: string;
   fullName: string;
+  // Required fields for components that depend on these
+  anonymousAlias: string;
   // Optional fields
   profilePicture?: string;
   avatarEmoji?: string;
-  anonymousAlias?: string;
   bio?: string;
   followers?: User[];
   following?: User[];

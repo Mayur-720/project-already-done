@@ -8,13 +8,15 @@ interface AvatarGeneratorProps {
   nickname: string;
   color?: string;
   size?: "sm" | "md" | "lg" | "xs";
+  onChange?: (emoji: string) => void;
 }
 
 const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ 
   emoji, 
   nickname, 
   color = "#9333EA", 
-  size = "md" 
+  size = "md",
+  onChange
 }) => {
   const navigate = useNavigate();
   const sizeClasses = {
@@ -32,6 +34,7 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
       )}
       style={{ backgroundColor: color }}
       title={nickname}
+      onClick={() => onChange && onChange(emoji)}
     >
       {emoji}
     </div>

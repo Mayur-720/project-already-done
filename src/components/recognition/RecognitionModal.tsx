@@ -1,10 +1,43 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { X, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getRecognitions, revokeRecognition } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import AvatarGenerator from '../user/AvatarGenerator';
+import { User } from '@/types';
+
+interface Recognition {
+  stats: {
+    totalRecognized: number;
+    totalRecognizers: number;
+    recognitionRate: number;
+    successfulRecognitions: number;
+    recognitionAttempts: number;
+  };
+  recognized: User[];
+  recognizers: User[];
+}
 
 interface RecognitionModalProps {
   open: boolean;
@@ -21,6 +54,7 @@ const RecognitionModal: React.FC<RecognitionModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState("recognized");
   const [filter, setFilter] = useState("all");
+  const { toast } = useToast();
 
   const {
     data: recognitionData,
@@ -81,8 +115,8 @@ const RecognitionModal: React.FC<RecognitionModalProps> = ({
           >
             <div className="flex items-center gap-3">
               <AvatarGenerator
-                emoji={user.avatarEmoji}
-                nickname={user.anonymousAlias}
+                emoji={user.avatarEmoji || '🎭'}
+                nickname={user.anonymousAlias || ''}
                 size="md"
               />
               <div>

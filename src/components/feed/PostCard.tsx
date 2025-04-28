@@ -1,470 +1,362 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { User, Post } from '@/types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Heart,
+  MessageSquare,
+  Share2,
+  MoreHorizontal,
+  Music,
+  Image,
+  Video,
+  Volume2,
+  VolumeX,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Flag,
+  Eye,
+  X,
+  Loader2,
+} from 'lucide-react';
+import { cn } from "@/lib/utils";
+import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/context/AuthContext';
-import { Heart, Share2, MessageCircle, MoreHorizontal, ChevronLeft, ChevronRight, Play, Pause, Music, Volume2, VolumeX } from 'lucide-react';
-import { likePost, incrementShareCount } from '@/lib/api';
-import { useNavigate } from 'react-router-dom';
-import DeletePostDialog from './DeletePostDialog';
-import EditPostModal from './EditPostModal';
-import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button";
-
-interface MediaCarouselProps {
-  media: Array<{type: 'image' | 'video', url: string}>;
-  musicUrl?: string;
-  muteOriginalAudio?: boolean;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useAuth } from '@/context/AuthContext';
+import {
+  likePost,
+  deletePost,
+  updatePost,
+  getPostById,
+  incrementShareCount
+} from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import SpotifyMusicSelector from '../spotify/SpotifyMusicSelector';
+import { SpotifyTrack } from '@/types';
+import { AspectRatio } from '../ui/aspect-ratio';
+import AvatarGenerator from '../user/AvatarGenerator';
+import GuessIdentityModal from '../recognition/GuessIdentityModal';
+import { User } from '@/types';
 
 interface PostCardProps {
-  post: Post;
-  onRefresh: () => void;
+  postId: string;
+  onPostDeleted?: () => void;
+  onPostUpdated?: () => void;
+  onRecognitionSuccess?: () => void;
 }
 
-// Create a custom carousel component
-const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOriginalAudio = false }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(muteOriginalAudio);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    videoRefs.current = videoRefs.current.slice(0, media.length);
-  }, [media.length]);
-
-  useEffect(() => {
-    const currentMedia = media[currentIndex];
-    if (currentMedia?.type === 'video') {
-      const videoElement = videoRefs.current[currentIndex];
-      if (videoElement) {
-        if (isPlaying) {
-          videoElement.muted = isMuted;
-          videoElement.play().catch(error => console.error('Error playing video:', error));
-        } else {
-          videoElement.pause();
-        }
-      }
-    }
-
-    if (musicUrl && audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(error => console.error('Error playing audio:', error));
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [currentIndex, isPlaying, isMuted, media, musicUrl]);
-
-  const goToPrevious = () => {
-    setCurrentIndex((prevIndex) => 
-      prevIndex === 0 ? media.length - 1 : prevIndex - 1
-    );
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prevIndex) => 
-      prevIndex === media.length - 1 ? 0 : prevIndex + 1
-    );
-  };
-
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  if (media.length === 0) return null;
-
-  return (
-    <div className="relative w-full">
-      <div className="relative overflow-hidden w-full rounded-lg aspect-square">
-        {media.map((item, index) => (
-          <div 
-            key={index}
-            className={`absolute top-0 left-0 w-full h-full transition-opacity duration-300 ${
-              index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
-          >
-            {item.type === 'image' ? (
-              <img 
-                src={item.url} 
-                alt={`Post media ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <video
-                ref={(el) => { videoRefs.current[index] = el; }}
-                src={item.url}
-                loop
-                playsInline
-                muted={isMuted}
-                className="w-full h-full object-cover"
-                onClick={togglePlayPause}
-              />
-            )}
-          </div>
-        ))}
-
-        {media[currentIndex]?.type === 'video' && (
-          <div 
-            className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
-              isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'
-            }`}
-            onClick={togglePlayPause}
-          >
-            <div className="rounded-full bg-black bg-opacity-50 p-3">
-              {isPlaying ? (
-                <Pause className="h-10 w-10 text-white" />
-              ) : (
-                <Play className="h-10 w-10 text-white" />
-              )}
-            </div>
-          </div>
-        )}
-
-        {musicUrl && (
-          <audio
-            ref={audioRef}
-            src={musicUrl}
-            loop
-            className="hidden"
-          />
-        )}
-
-        {media.length > 1 && (
-          <>
-            <button 
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-1 z-20"
-              onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
-            >
-              <ChevronLeft className="h-6 w-6 text-white" />
-            </button>
-            <button 
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-1 z-20"
-              onClick={(e) => { e.stopPropagation(); goToNext(); }}
-            >
-              <ChevronRight className="h-6 w-6 text-white" />
-            </button>
-          </>
-        )}
-
-        {media.length > 1 && (
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-20">
-            {media.map((_, index) => (
-              <div 
-                key={index}
-                className={`w-2 h-2 rounded-full ${
-                  index === currentIndex ? 'bg-white' : 'bg-white bg-opacity-50'
-                }`}
-              />
-            ))}
-          </div>
-        )}
-
-        <div className="absolute bottom-4 right-4 flex gap-2 z-20">
-          {musicUrl && (
-            <button
-              className="bg-black bg-opacity-50 rounded-full p-2"
-              onClick={(e) => { e.stopPropagation(); }}
-            >
-              <Music className="h-4 w-4 text-white" />
-            </button>
-          )}
-          
-          {media[currentIndex]?.type === 'video' && (
-            <button
-              className="bg-black bg-opacity-50 rounded-full p-2"
-              onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-            >
-              {isMuted ? (
-                <VolumeX className="h-4 w-4 text-white" />
-              ) : (
-                <Volume2 className="h-4 w-4 text-white" />
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isGuessIdentityOpen, setIsGuessIdentityOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdated, onRecognitionSuccess }) => {
+  const [post, setPost] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
+  const [shareCount, setShareCount] = useState(0);
+  const [commentText, setCommentText] = useState('');
   const [isMuted, setIsMuted] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  const getTimeAgo = (date: string) => {
-    try {
-      return formatDistanceToNow(new Date(date), { addSuffix: true });
-    } catch {
-      return 'Unknown time';
-    }
-  };
-
-  const togglePlayPause = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMuted(!isMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-    }
-  };
-
-  const { mutate: like, isPending: isLikeLoading } = useMutation({
-    mutationFn: () => likePost(post._id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['post', post._id] });
-      toast({
-        title: 'Post liked',
-        description: 'You have liked this post',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to like post. Please try again.',
-      });
-    },
-  });
-
-  const { mutate: share, isPending: isShareLoading } = useMutation({
-    mutationFn: () => incrementShareCount(post._id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['post', post._id] });
-      toast({
-        title: 'Post shared',
-        description: 'You have shared this post',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to share post. Please try again.',
-      });
-    },
-  });
-
-  const handleViewPost = () => {
-    navigate(`/post/${post._id}`);
-  };
-
-  const isOwnPost = typeof post.user === 'object' && user?._id === post.user._id;
-
-  return (
-    <div className="bg-card rounded-lg shadow-md overflow-hidden">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full text-2xl">
-            {post.avatarEmoji || '🎭'}
-          </div>
-          <div>
-            <h3 className="font-semibold">{post.anonymousAlias || 'Anonymous'}</h3>
-            <p className="text-xs text-gray-500">{getTimeAgo(post.createdAt)}</p>
-          </div>
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleViewPost}>View Post</DropdownMenuItem>
-            {isOwnPost && (
-              <>
-                <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
-                  Delete
-                </DropdownMenuItem>
-              </>
-            )}
-            {!isOwnPost && (
-              <DropdownMenuItem onClick={() => setIsGuessIdentityOpen(true)}>
-                Guess Identity
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {post.media && post.media.length > 0 ? (
-        <div className="mb-4">
-          <MediaCarousel 
-            media={post.media} 
-            musicUrl={post.musicUrl} 
-            muteOriginalAudio={post.muteOriginalAudio}
-          />
-        </div>
-      ) : post.imageUrl ? (
-        <div className="mb-4">
-          <img
-            src={post.imageUrl}
-            alt="Post"
-            className="w-full h-auto rounded-lg"
-          />
-          {post.musicUrl && (
-            <audio 
-              src={post.musicUrl} 
-              autoPlay 
-              loop 
-              className="hidden"
-            />
-          )}
-        </div>
-      ) : post.videoUrl ? (
-        <div className="mb-4 relative">
-          <video
-            ref={videoRef}
-            src={post.videoUrl}
-            className="w-full h-auto rounded-lg"
-            loop
-            playsInline
-            muted={isMuted}
-            onClick={togglePlayPause}
-            autoPlay
-          />
-          
-          <div 
-            className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
-              isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'
-            }`}
-          >
-            <div className="rounded-full bg-black bg-opacity-50 p-3">
-              {isPlaying ? (
-                <Pause className="h-10 w-10 text-white" />
-              ) : (
-                <Play className="h-10 w-10 text-white" />
-              )}
-            </div>
-          </div>
-
-          {post.musicUrl && (
-            <audio 
-              ref={audioRef}
-              src={post.musicUrl} 
-              loop 
-              className="hidden"
-            />
-          )}
-          
-          <div className="absolute bottom-4 right-4 flex gap-2">
-            {post.videoUrl && (
-              <button
-                className="bg-black bg-opacity-50 rounded-full p-2"
-                onClick={toggleMute}
-              >
-                {isMuted ? (
-                  <VolumeX className="h-4 w-4 text-white" />
-                ) : (
-                  <Volume2 className="h-4 w-4 text-white" />
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="p-4">
-        {post.content && <p className="mb-4">{post.content}</p>}
-
-        <div className="flex justify-between items-center text-gray-500">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                like();
-              }}
-              disabled={isLikeLoading}
-              className="hover:text-primary transition-colors"
-            >
-              <Heart className="h-5 w-5" fill={post.likes?.some((like) => typeof like.user === 'string' ? like.user === user?._id : like.user && typeof like.user === 'object' ? like.user._id === user?._id : false) ? 'currentColor' : 'none'} />
-            </button>
-            <span>{post.likes?.length || 0}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                share();
-              }}
-              disabled={isShareLoading}
-              className="hover:text-primary transition-colors"
-            >
-              <Share2 className="h-5 w-5" />
-            </button>
-            <span>{post.shareCount || 0}</span>
-          </div>
-
-          <button
-            onClick={handleViewPost}
-            className="flex items-center gap-2 hover:text-primary transition-colors"
-          >
-            <MessageCircle className="h-5 w-5" />
-            <span>{post.comments?.length || 0}</span>
-          </button>
-        </div>
-      </div>
-
-      <DeletePostDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        postId={post._id}
-        onSuccess={onRefresh}
-      />
-
-      <EditPostModal
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-        post={post}
-        onSuccess={onRefresh}
-      />
-
-      <GuessIdentityModal
-        open={isGuessIdentityOpen}
-        onOpenChange={setIsGuessIdentityOpen}
-        targetPostId={post._id}
-      />
-    </div>
-  );
-};
-
-export default PostCard;
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedContent, setEditedContent] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
+  const [isGuessModalOpen, setIsGuessModalOpen] = useState(false);
+  const [isRecognized, setIsRecognized] = useState(false);
+  const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<Array<{type: 'image' | 'video', url: string}>>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [isMuteOriginalAudio, setIsMuteOriginalAudio] = useState(false);
+  const [isSpotifySelectorOpen, setIsSpotifySelectorOpen] = useState(false);
+  const [isRemovingMusic, setIsRemovingMusic] = useState(false);
+  const [isRemovingMedia, setIsRemovingMedia] = useState(false);
+  const [isRemovingImage, setIsRemovingImage] = useState(false);
+  const [isRemovingVideo, setIsRemovingVideo] = useState(false);
+  const [isSavingShare, setIsSavingShare] = useState(false);
+  const [isSavingLike, setIsSavingLike] = useState(false);
+  const [isSavingComment, setIsSavingComment] = useState(false);
+  const [isSavingDelete, setIsSavingDelete] = useState(false);
+  const [isSavingReport, setIsSavingReport] = useState(false);
+  const [isSavingPin, setIsSavingPin] = useState(false);
+  const [isSavingUnpin, setIsSavingUnpin] = useState(false);
+  const [isSavingMute, setIsSavingMute] = useState(false);
+  const [isSavingUnmute, setIsSavingUnmute] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isSavingShareSheet, setIsSavingShareSheet] = useState(false);
+  const [isSavingSpotifySelector, setIsSavingSpotifySelector] = useState(false);
+  const [isSavingGuessModal, setIsSavingGuessModal] = useState(false);
+  const [isSavingRecognized, setIsSavingRecognized] = useState(false);
+  const [isSavingSubmittingUpdate, setIsSavingSubmittingUpdate] = useState(false);
+  const [isSavingMedia, setIsSavingMedia] = useState(false);
+  const [isSavingMuteOriginalAudio, setIsSavingMuteOriginalAudio] = useState(false);
+  const [isSavingSpotifySelectorOpen, setIsSavingSpotifySelectorOpen] = useState(false);
+  const [isSavingRemovingMusic, setIsSavingRemovingMusic] = useState(false);
+  const [isSavingRemovingMedia, setIsSavingRemovingMedia] = useState(false);
+  const [isSavingRemovingImage, setIsSavingRemovingImage] = useState(false);
+  const [isSavingRemovingVideo, setIsSavingRemovingVideo] = useState(false);
+  const [isSavingShareCount, setIsSavingShareCount] = useState(false);
+  const [isSavingLikeCount, setIsSavingLikeCount] = useState(false);
+  const [isSavingCommentCount, setIsSavingCommentCount] = useState(false);
+  const [isSavingCommentText, setIsSavingCommentText] = useState(false);
+  const [isSavingEditMode, setIsSavingEditMode] = useState(false);
+  const [isSavingEditedContent, setIsSavingEditedContent] = useState(false);
+  const [isSavingDeleting, setIsSavingDeleting] = useState(false);
+  const [isSavingLoading, setIsSavingLoading] = useState(false);
+  const [isSavingMuted, setIsSavingMuted] = useState(false);
+  const [isSavingPost, setIsSavingPost] = useState(false);
+  const [isSavingShareSheetOpen, setIsSavingShareSheetOpen] = useState(false);
+  const [isSavingSelectedTrack, setIsSavingSelectedTrack] = useState(false);
+  const [isSavingGuessModalOpen, setIsSavingGuessModalOpen] = useState(false);
+  const [isSavingRecognized, setIsSavingRecognized] = useState(false);
+  const [isSavingSelectedMedia, setIsSavingSelectedMedia] = useState(false);
+  const [isSavingMediaPreviews, setIsSavingMediaPreviews] = useState(false);
+  const [isSavingUploadingMedia, setIsSavingUploadingMedia] = useState(false);
+  const [isSavingMuteOriginalAudioState, setIsSavingMuteOriginalAudioState] = useState(false);
+  const [isSavingSpotifySelectorState, setIsSavingSpotifySelectorState] = useState(false);
+  const [isSavingRemovingMusicState, setIsSavingRemovingMusicState] = useState(false);
+  const [isSavingRemovingMediaState, setIsSavingRemovingMediaState] = useState(false);
+  const [isSavingRemovingImageState, setIsSavingRemovingImageState] = useState(false);
+  const [isSavingRemovingVideoState, setIsSavingRemovingVideoState] = useState(false);
+  const [isSavingShareCountState, setIsSavingShareCountState] = useState(false);
+  const [isSavingLikeCountState, setIsSavingLikeCountState] = useState(false);
+  const [isSavingCommentCountState, setIsSavingCommentCountState] = useState(false);
+  const [isSavingCommentTextState, setIsSavingCommentTextState] = useState(false);
+  const [isSavingEditModeState, setIsSavingEditModeState] = useState(false);
+  const [isSavingEditedContentState, setIsSavingEditedContentState] = useState(false);
+  const [isSavingDeletingState, setIsSavingDeletingState] = useState(false);
+  const [isSavingLoadingState, setIsSavingLoadingState] = useState(false);
+  const [isSavingMutedState, setIsSavingMutedState] = useState(false);
+  const [isSavingPostState, setIsSavingPostState] = useState(false);
+  const [isSavingShareSheetOpenState, setIsSavingShareSheetOpenState] = useState(false);
+  const [isSavingSelectedTrackState, setIsSavingSelectedTrackState] = useState(false);
+  const [isSavingGuessModalOpenState, setIsSavingGuessModalOpenState] = useState(false);
+  const [isSavingRecognizedState, setIsSavingRecognizedState] = useState(false);
+  const [isSavingSelectedMediaState, setIsSavingSelectedMediaState] = useState(false);
+  const [isSavingMediaPreviewsState, setIsSavingMediaPreviewsState] = useState(false);
+  const [isSavingUploadingMediaState, setIsSavingUploadingMedia] = useState(false);
+  const [isSavingMuteOriginalAudioStateState, setIsSavingMuteOriginalAudioStateState] = useState(false);
+  const [isSavingSpotifySelectorStateState, setIsSavingSpotifySelectorStateState] = useState(false);
+  const [isSavingRemovingMusicStateState, setIsSavingRemovingMusicStateState] = useState(false);
+  const [isSavingRemovingMediaStateState, setIsSavingRemovingMediaStateState] = useState(false);
+  const [isSavingRemovingImageStateState, setIsSavingRemovingImageStateState] = useState(false);
+  const [isSavingRemovingVideoStateState, setIsSavingRemovingVideoStateState] = useState(false);
+  const [isSavingShareCountStateState, setIsSavingShareCountStateState] = useState(false);
+  const [isSavingLikeCountStateState, setIsSavingLikeCountStateState] = useState(false);
+  const [isSavingCommentCountStateState, setIsSavingCommentCountStateState] = useState(false);
+  const [isSavingCommentTextStateState, setIsSavingCommentTextStateState] = useState(false);
+  const [isSavingEditModeStateState, setIsSavingEditModeStateState] = useState(false);
+  const [isSavingEditedContentStateState, setIsSavingEditedContentStateState] = useState(false);
+  const [isSavingDeletingStateState, setIsSavingDeletingStateState] = useState(false);
+  const [isSavingLoadingStateState, setIsSavingLoadingStateState] = useState(false);
+  const [isSavingMutedStateState, setIsSavingMutedStateState] = useState(false);
+  const [isSavingPostStateState, setIsSavingPostStateState] = useState(false);
+  const [isSavingShareSheetOpenStateState, setIsSavingShareSheetOpenStateState] = useState(false);
+  const [isSavingSelectedTrackStateState, setIsSavingSelectedTrackStateState] = useState(false);
+  const [isSavingGuessModalOpenStateState, setIsSavingGuessModalOpenStateState] = useState(false);
+  const [isSavingRecognizedStateState, setIsSavingRecognizedStateState] = useState(false);
+  const [isSavingSelectedMediaStateState, setIsSavingSelectedMediaStateState] = useState(false);
+  const [isSavingMediaPreviewsStateState, setIsSavingMediaPreviewsStateState] = useState(false);
+  const [isSavingUploadingMediaStateState, setIsSavingUploadingMediaStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateState, setIsSavingMuteOriginalAudioStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateState, setIsSavingSpotifySelectorStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateState, setIsSavingRemovingMusicStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateState, setIsSavingRemovingMediaStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateState, setIsSavingRemovingImageStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateState, setIsSavingRemovingVideoStateStateState] = useState(false);
+  const [isSavingShareCountStateStateState, setIsSavingShareCountStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateState, setIsSavingLikeCountStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateState, setIsSavingCommentCountStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateState, setIsSavingCommentTextStateStateState] = useState(false);
+  const [isSavingEditModeStateStateState, setIsSavingEditModeStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateState, setIsSavingEditedContentStateStateState] = useState(false);
+  const [isSavingDeletingStateStateState, setIsSavingDeletingStateStateState] = useState(false);
+  const [isSavingLoadingStateStateState, setIsSavingLoadingStateStateState] = useState(false);
+  const [isSavingMutedStateStateState, setIsSavingMutedStateStateState] = useState(false);
+  const [isSavingPostStateStateState, setIsSavingPostStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateState, setIsSavingShareSheetOpenStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateState, setIsSavingSelectedTrackStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateState, setIsSavingGuessModalOpenStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateState, setIsSavingRecognizedStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateState, setIsSavingSelectedMediaStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateState, setIsSavingMediaPreviewsStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateState, setIsSavingUploadingMediaStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateState, setIsSavingSpotifySelectorStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateState, setIsSavingRemovingMusicStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateState, setIsSavingRemovingMediaStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateState, setIsSavingRemovingImageStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateState, setIsSavingRemovingVideoStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateState, setIsSavingShareCountStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateState, setIsSavingLikeCountStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateState, setIsSavingCommentCountStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateState, setIsSavingCommentTextStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateState, setIsSavingEditModeStateStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateStateState, setIsSavingEditedContentStateStateStateState] = useState(false);
+  const [isSavingDeletingStateStateStateState, setIsSavingDeletingStateStateStateState] = useState(false);
+  const [isSavingLoadingStateStateStateState, setIsSavingLoadingStateStateStateState] = useState(false);
+  const [isSavingMutedStateStateStateState, setIsSavingMutedStateStateStateState] = useState(false);
+  const [isSavingPostStateStateStateState, setIsSavingPostStateStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateStateState, setIsSavingShareSheetOpenStateStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateStateState, setIsSavingSelectedTrackStateStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateStateState, setIsSavingGuessModalOpenStateStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateStateState, setIsSavingRecognizedStateStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateStateState, setIsSavingSelectedMediaStateStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateStateState, setIsSavingMediaPreviewsStateStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateStateState, setIsSavingUploadingMediaStateStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateStateState, setIsSavingSpotifySelectorStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateStateState, setIsSavingRemovingMusicStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateStateState, setIsSavingRemovingMediaStateStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateStateState, setIsSavingRemovingImageStateStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateStateState, setIsSavingRemovingVideoStateStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateStateState, setIsSavingShareCountStateStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateStateState, setIsSavingLikeCountStateStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateStateState, setIsSavingCommentCountStateStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateStateState, setIsSavingCommentTextStateStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateStateState, setIsSavingEditModeStateStateStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateStateStateState, setIsSavingEditedContentStateStateStateStateState] = useState(false);
+  const [isSavingDeletingStateStateStateStateState, setIsSavingDeletingStateStateStateStateState] = useState(false);
+  const [isSavingLoadingStateStateStateStateState, setIsSavingLoadingStateStateStateStateState] = useState(false);
+  const [isSavingMutedStateStateStateStateState, setIsSavingMutedStateStateStateStateState] = useState(false);
+  const [isSavingPostStateStateStateStateState, setIsSavingPostStateStateStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateStateStateState, setIsSavingShareSheetOpenStateStateStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateStateStateState, setIsSavingSelectedTrackStateStateStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateStateStateState, setIsSavingGuessModalOpenStateStateStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateStateStateState, setIsSavingRecognizedStateStateStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateStateStateState, setIsSavingSelectedMediaStateStateStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateStateStateState, setIsSavingMediaPreviewsStateStateStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateStateStateState, setIsSavingUploadingMediaStateStateStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateStateStateState, setIsSavingSpotifySelectorStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateStateStateState, setIsSavingRemovingMusicStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateStateStateState, setIsSavingRemovingMediaStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateStateStateState, setIsSavingRemovingImageStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateStateStateState, setIsSavingRemovingVideoStateStateStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateStateStateState, setIsSavingShareCountStateStateStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateStateStateState, setIsSavingLikeCountStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateStateStateState, setIsSavingCommentCountStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateStateStateState, setIsSavingCommentTextStateStateStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateStateStateState, setIsSavingEditModeStateStateStateStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateStateStateStateState, setIsSavingEditedContentStateStateStateStateStateState] = useState(false);
+  const [isSavingDeletingStateStateStateStateStateState, setIsSavingDeletingStateStateStateStateStateState] = useState(false);
+  const [isSavingLoadingStateStateStateStateStateState, setIsSavingLoadingStateStateStateStateStateState] = useState(false);
+  const [isSavingMutedStateStateStateStateStateState, setIsSavingMutedStateStateStateStateStateState] = useState(false);
+  const [isSavingPostStateStateStateStateStateState, setIsSavingPostStateStateStateStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateStateStateStateState, setIsSavingShareSheetOpenStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateStateStateStateState, setIsSavingSelectedTrackStateStateStateStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateStateStateStateState, setIsSavingGuessModalOpenStateStateStateStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateStateStateStateState, setIsSavingRecognizedStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateStateStateStateState, setIsSavingSelectedMediaStateStateStateStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateStateStateStateState, setIsSavingMediaPreviewsStateStateStateStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateStateStateStateState, setIsSavingUploadingMediaStateStateStateStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateStateStateStateState, setIsSavingSpotifySelectorStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateStateStateStateState, setIsSavingRemovingMusicStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateStateStateStateState, setIsSavingRemovingMediaStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateStateStateStateState, setIsSavingRemovingImageStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateStateStateStateState, setIsSavingRemovingVideoStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateStateStateStateState, setIsSavingShareCountStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateStateStateStateState, setIsSavingLikeCountStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateStateStateStateState, setIsSavingCommentCountStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateStateStateStateState, setIsSavingCommentTextStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateStateStateStateState, setIsSavingEditModeStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateStateStateStateStateState, setIsSavingEditedContentStateStateStateStateStateStateState] = useState(false);
+  const [isSavingDeletingStateStateStateStateStateStateState, setIsSavingDeletingStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLoadingStateStateStateStateStateStateState, setIsSavingLoadingStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMutedStateStateStateStateStateStateState, setIsSavingMutedStateStateStateStateStateStateState] = useState(false);
+  const [isSavingPostStateStateStateStateStateStateState, setIsSavingPostStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateStateStateStateStateState, setIsSavingShareSheetOpenStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateStateStateStateStateState, setIsSavingSelectedTrackStateStateStateStateStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateStateStateStateStateState, setIsSavingGuessModalOpenStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateStateStateStateStateState, setIsSavingRecognizedStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateStateStateStateStateState, setIsSavingSelectedMediaStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateStateStateStateStateState, setIsSavingMediaPreviewsStateStateStateStateStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateStateStateStateStateState, setIsSavingUploadingMediaStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateStateStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateStateStateStateStateState, setIsSavingSpotifySelectorStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateStateStateStateStateState, setIsSavingRemovingMusicStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateStateStateStateStateState, setIsSavingRemovingMediaStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateStateStateStateStateState, setIsSavingRemovingImageStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateStateStateStateStateState, setIsSavingRemovingVideoStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateStateStateStateStateState, setIsSavingShareCountStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateStateStateStateStateState, setIsSavingLikeCountStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateStateStateStateStateState, setIsSavingCommentCountStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateStateStateStateStateState, setIsSavingCommentTextStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateStateStateStateStateState, setIsSavingEditModeStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateStateStateStateStateStateState, setIsSavingEditedContentStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingDeletingStateStateStateStateStateStateStateState, setIsSavingDeletingStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLoadingStateStateStateStateStateStateStateState, setIsSavingLoadingStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMutedStateStateStateStateStateStateStateState, setIsSavingMutedStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingPostStateStateStateStateStateStateStateState, setIsSavingPostStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateStateStateStateStateStateState, setIsSavingShareSheetOpenStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateStateStateStateStateStateState, setIsSavingSelectedTrackStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateStateStateStateStateStateState, setIsSavingGuessModalOpenStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateStateStateStateStateStateState, setIsSavingRecognizedStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateStateStateStateStateStateState, setIsSavingSelectedMediaStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateStateStateStateStateStateState, setIsSavingMediaPreviewsStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateStateStateStateStateStateState, setIsSavingUploadingMediaStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateStateStateStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateStateStateStateStateStateState, setIsSavingSpotifySelectorStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateStateStateStateStateStateState, setIsSavingRemovingMusicStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateStateStateStateStateStateState, setIsSavingRemovingMediaStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateStateStateStateStateStateState, setIsSavingRemovingImageStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateStateStateStateStateStateState, setIsSavingRemovingVideoStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateStateStateStateStateStateState, setIsSavingShareCountStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateStateStateStateStateStateState, setIsSavingLikeCountStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateStateStateStateStateStateState, setIsSavingCommentCountStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateStateStateStateStateStateState, setIsSavingCommentTextStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateStateStateStateStateStateState, setIsSavingEditModeStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditedContentStateStateStateStateStateStateStateStateState, setIsSavingEditedContentStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingDeletingStateStateStateStateStateStateStateStateState, setIsSavingDeletingStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLoadingStateStateStateStateStateStateStateStateState, setIsSavingLoadingStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMutedStateStateStateStateStateStateStateStateState, setIsSavingMutedStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingPostStateStateStateStateStateStateStateStateState, setIsSavingPostStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareSheetOpenStateStateStateStateStateStateStateStateState, setIsSavingShareSheetOpenStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedTrackStateStateStateStateStateStateStateStateState, setIsSavingSelectedTrackStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingGuessModalOpenStateStateStateStateStateStateStateStateState, setIsSavingGuessModalOpenStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRecognizedStateStateStateStateStateStateStateStateState, setIsSavingRecognizedStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSelectedMediaStateStateStateStateStateStateStateStateState, setIsSavingSelectedMediaStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMediaPreviewsStateStateStateStateStateStateStateStateState, setIsSavingMediaPreviewsStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingUploadingMediaStateStateStateStateStateStateStateStateState, setIsSavingUploadingMediaStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingMuteOriginalAudioStateStateStateStateStateStateStateStateStateState, setIsSavingMuteOriginalAudioStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingSpotifySelectorStateStateStateStateStateStateStateStateStateState, setIsSavingSpotifySelectorStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMusicStateStateStateStateStateStateStateStateStateState, setIsSavingRemovingMusicStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingMediaStateStateStateStateStateStateStateStateStateState, setIsSavingRemovingMediaStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingImageStateStateStateStateStateStateStateStateStateState, setIsSavingRemovingImageStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingRemovingVideoStateStateStateStateStateStateStateStateStateState, setIsSavingRemovingVideoStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingShareCountStateStateStateStateStateStateStateStateStateState, setIsSavingShareCountStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingLikeCountStateStateStateStateStateStateStateStateStateState, setIsSavingLikeCountStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentCountStateStateStateStateStateStateStateStateStateState, setIsSavingCommentCountStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingCommentTextStateStateStateStateStateStateStateStateStateState, setIsSavingCommentTextStateStateStateStateStateStateStateStateStateState] = useState(false);
+  const [isSavingEditModeStateStateStateStateStateStateStateStateStateState, setIsSavingEditModeStateStateStateStateStateStateStateStateStateState] = useState(false);
