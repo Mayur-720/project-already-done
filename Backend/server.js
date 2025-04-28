@@ -1,4 +1,3 @@
-
 require('dotenv').config({ path: './.env' });
 const express = require('express');
 const http = require('http');
@@ -13,6 +12,7 @@ const postRoutes = require('./routes/postRoutes');
 const whisperRoutes = require('./routes/whisperRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const socketConfig = require('./configs/socket');
+const spotifyRoutes = require('./routes/spotifyRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,7 +21,7 @@ const io = new Server(server, {
     origin: [
       'https://shadow-whispers-social.lovable.app',
       'http://localhost:8080',
-      'http://localhost:3000', // Add common React port
+      'http://localhost:3000',
     ],
     methods: ['GET', 'POST'],
     credentials: true,
@@ -56,6 +56,7 @@ app.use('/api/ghost-circles', ghostCircleRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/whispers', whisperRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/spotify', spotifyRoutes);
 
 app.get('/healthcheck', (req, res) => {
   res.status(200).json({ status: 'ok' });
