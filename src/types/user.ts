@@ -1,4 +1,6 @@
 
+import { Post } from './user';
+
 export interface User {
   _id: string;
   username: string;
@@ -6,9 +8,9 @@ export interface User {
   fullName: string;
   // Required fields for components that depend on these
   anonymousAlias: string;
+  avatarEmoji: string;
   // Optional fields
   profilePicture?: string;
-  avatarEmoji?: string;
   bio?: string;
   followers?: User[];
   following?: User[];

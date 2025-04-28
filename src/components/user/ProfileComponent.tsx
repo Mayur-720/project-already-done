@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -31,15 +30,28 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
   const isOwnProfile = !userId || userId === authUser?._id;
   const displayUser = isOwnProfile ? authUser : user;
 
+  const safeDisplayUser: User = displayUser ? {
+    ...displayUser,
+    avatarEmoji: displayUser.avatarEmoji || '🎭',
+    anonymousAlias: displayUser.anonymousAlias || 'Anonymous'
+  } : {
+    _id: '',
+    username: '',
+    email: '',
+    fullName: '',
+    avatarEmoji: '🎭',
+    anonymousAlias: 'Anonymous'
+  };
+
   const handleFriendRequest = async () => {
-    if (!displayUser || !displayUser.username) return;
+    if (!safeDisplayUser || !safeDisplayUser.username) return;
 
     try {
       setLoadingAction(true);
-      await addFriend(displayUser.username);
+      await addFriend(safeDisplayUser.username);
       toast({
         title: 'Friend request sent',
-        description: `A friend request has been sent to ${displayUser.anonymousAlias || displayUser.username}!`,
+        description: `A friend request has been sent to ${safeDisplayUser.anonymousAlias || safeDisplayUser.username}!`,
       });
     } catch (error: any) {
       toast({
@@ -58,7 +70,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
     try {
       setIsLoadingPosts(true);
       const fetchedPosts = await getUserPosts(userId || authUser?._id || '');
-      // Convert imported posts to format that matches our type expectations
       const typedPosts: Post[] = fetchedPosts.map((post: any) => ({
         ...post,
         user: typeof post.user === 'object' ? post.user._id : post.user,
@@ -94,7 +105,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
     navigate(`/post/${postId}`);
   };
 
-  if (!displayUser) {
+  if (!safeDisplayUser) {
     return <div className="text-center p-8">User not found</div>;
   }
 
@@ -113,15 +124,15 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full text-4xl">
-                {displayUser.avatarEmoji || '🎭'}
+                {safeDisplayUser.avatarEmoji}
               </div>
 
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  {displayUser.anonymousAlias || 'Anonymous User'}
+                  {safeDisplayUser.anonymousAlias}
                 </h1>
                 {isOwnProfile && (
-                  <p className="text-sm text-muted-foreground">@{displayUser.username}</p>
+                  <p className="text-sm text-muted-foreground">@{safeDisplayUser.username}</p>
                 )}
               </div>
             </div>
@@ -164,13 +175,13 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
           <div className="mt-6">
             <h2 className="text-lg font-semibold mb-2">Recognition Stats</h2>
             <RecognitionStats 
-              recognitionAttempts={displayUser.recognitionAttempts}
-              successfulRecognitions={displayUser.successfulRecognitions}
-              recognitionRate={(displayUser.successfulRecognitions && displayUser.recognitionAttempts) 
-                ? (displayUser.successfulRecognitions / displayUser.recognitionAttempts * 100) 
+              recognitionAttempts={safeDisplayUser.recognitionAttempts}
+              successfulRecognitions={safeDisplayUser.successfulRecognitions}
+              recognitionRate={(safeDisplayUser.successfulRecognitions && safeDisplayUser.recognitionAttempts) 
+                ? (safeDisplayUser.successfulRecognitions / safeDisplayUser.recognitionAttempts * 100) 
                 : 0}
-              recognizedUsers={displayUser.recognizedUsers?.length || 0}
-              identityRecognizers={displayUser.identityRecognizers?.length || 0}
+              recognizedUsers={safeDisplayUser.recognizedUsers?.length || 0}
+              identityRecognizers={safeDisplayUser.identityRecognizers?.length || 0}
             />
           </div>
 
@@ -243,7 +254,6 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
                       </div>
                     )}
                     
-                    {/* Post info overlay */}
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
                       <div className="flex justify-between">
                         <span>{post.likes?.length || 0} likes</span>

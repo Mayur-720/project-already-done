@@ -65,85 +65,58 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import SpotifyMusicSelector from '../spotify/SpotifyMusicSelector';
-import { SpotifyTrack } from '@/types';
+import { SpotifyTrack, Post } from '@/types';
 import { AspectRatio } from '../ui/aspect-ratio';
 import AvatarGenerator from '../user/AvatarGenerator';
 import GuessIdentityModal from '../recognition/GuessIdentityModal';
 import { User } from '@/types';
 
-interface PostCardProps {
-  postId: string;
-  onPostDeleted?: () => void;
-  onPostUpdated?: () => void;
-  onRecognitionSuccess?: () => void;
-}
-
-// Interface for tracking loading states
+// Interface for loading states
 interface LoadingStates {
   share: boolean;
   like: boolean;
   comment: boolean;
   delete: boolean;
   report: boolean;
-  pin: boolean;
-  unpin: boolean;
-  mute: boolean;
-  unmute: boolean;
-  edit: boolean;
-  guessModal: boolean;
-  removingMedia: boolean;
-  removingMusic: boolean;
   update: boolean;
+  [key: string]: boolean;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdated, onRecognitionSuccess }) => {
-  // Post data and primary state
-  const [post, setPost] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Interaction states
+interface PostCardProps {
+  postId?: string;
+  post?: Post;
+  onPostDeleted?: () => void;
+  onPostUpdated?: () => void;
+  onRecognitionSuccess?: () => void;
+  onRefresh?: () => void;
+}
+
+const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onPostDeleted, onPostUpdated, onRecognitionSuccess, onRefresh }) => {
+  const [post, setPost] = useState<Post | null>(initialPost || null);
+  const [isLoading, setIsLoading] = useState(!initialPost);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
   const [shareCount, setShareCount] = useState(0);
   const [commentText, setCommentText] = useState('');
   const [isMuted, setIsMuted] = useState(true);
-  
-  // Edit mode states
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Media-related states
-  const [selectedMedia, setSelectedMedia] = useState<Array<{type: 'image' | 'video', url: string}>>([]);
-  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
-  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
-  const [isMuteOriginalAudio, setIsMuteOriginalAudio] = useState(false);
-  
-  // Sheet and modal states
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-  const [isSpotifySelectorOpen, setIsSpotifySelectorOpen] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
   const [isGuessModalOpen, setIsGuessModalOpen] = useState(false);
   const [isRecognized, setIsRecognized] = useState(false);
-  
-  // Track selection
-  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
-  
-  // Loading states consolidated in a single object
+  const [isMuteOriginalAudio, setIsMuteOriginalAudio] = useState(false);
+  const [isSpotifySelectorOpen, setIsSpotifySelectorOpen] = useState(false);
+
+  // Consolidated loading states
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
     share: false,
     like: false,
     comment: false,
     delete: false,
     report: false,
-    pin: false,
-    unpin: false,
-    mute: false,
-    unmute: false,
-    edit: false,
-    guessModal: false,
-    removingMedia: false,
-    removingMusic: false,
     update: false,
   });
 
@@ -151,9 +124,11 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch post data
+  // Fetch post data if postId is provided but no initialPost
   useEffect(() => {
     const fetchPostData = async () => {
+      if (!postId) return;
+      
       try {
         setIsLoading(true);
         const postData = await getPostById(postId);
@@ -183,10 +158,17 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
       }
     };
 
-    if (postId) {
+    if (postId && !initialPost) {
       fetchPostData();
+    } else if (initialPost) {
+      setEditedContent(initialPost.content || '');
+      setLikeCount(initialPost.likes?.length || 0);
+      setCommentCount(initialPost.comments?.length || 0);
+      setShareCount(initialPost.shareCount || 0);
+      setIsLiked(initialPost.likes?.some((like: any) => 
+        like.user === user?._id || like.user?._id === user?._id) || false);
     }
-  }, [postId, user?._id, toast]);
+  }, [postId, initialPost, user?._id, toast]);
 
   // Handler for liking a post
   const handleLike = async () => {
@@ -195,7 +177,11 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
     try {
       setLoadingStates(prev => ({ ...prev, like: true }));
       
-      await likePost(postId);
+      if (post) {
+        await likePost(post._id);
+      } else if (postId) {
+        await likePost(postId);
+      }
       
       // Update UI optimistically
       setIsLiked(prevIsLiked => !prevIsLiked);
@@ -221,7 +207,11 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
     setIsShareSheetOpen(true);
     
     try {
-      await incrementShareCount(postId);
+      if (post) {
+        await incrementShareCount(post._id);
+      } else if (postId) {
+        await incrementShareCount(postId);
+      }
       setShareCount(prev => prev + 1);
     } catch (error) {
       console.error('Error sharing post:', error);
@@ -237,7 +227,11 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
     setLoadingStates(prev => ({ ...prev, delete: true }));
     
     try {
-      await deletePost(postId);
+      if (post) {
+        await deletePost(post._id);
+      } else if (postId) {
+        await deletePost(postId);
+      }
       
       toast({
         title: "Post Deleted",
@@ -246,6 +240,10 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
       
       if (onPostDeleted) {
         onPostDeleted();
+      }
+      
+      if (onRefresh) {
+        onRefresh();
       }
       
     } catch (error) {
@@ -267,19 +265,25 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
     setLoadingStates(prev => ({ ...prev, update: true }));
     
     try {
-      await updatePost(postId, {
+      const postUpdateData = {
         content: editedContent,
         ...(selectedTrack && { musicUrl: selectedTrack.preview_url || '' }),
         muteOriginalAudio: isMuteOriginalAudio,
-      });
+      };
+      
+      if (post) {
+        await updatePost(post._id, postUpdateData);
+      } else if (postId) {
+        await updatePost(postId, postUpdateData);
+      }
       
       // Update local state
-      setPost(prev => ({
+      setPost(prev => prev ? {
         ...prev,
         content: editedContent,
         ...(selectedTrack && { musicUrl: selectedTrack.preview_url || '' }),
         muteOriginalAudio: isMuteOriginalAudio,
-      }));
+      } : null);
       
       setIsEditMode(false);
       
@@ -290,6 +294,10 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
       
       if (onPostUpdated) {
         onPostUpdated();
+      }
+      
+      if (onRefresh) {
+        onRefresh();
       }
       
     } catch (error) {
@@ -687,6 +695,7 @@ const PostCard: React.FC<PostCardProps> = ({ postId, onPostDeleted, onPostUpdate
             anonymousAlias: post.anonymousAlias || 'Anonymous',
             email: '',
             fullName: '',
+            avatarEmoji: post.avatarEmoji || '🎭',  // Add the required avatarEmoji property
           }}
           onSuccess={handleRecognitionSuccess}
         />

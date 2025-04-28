@@ -1,5 +1,5 @@
-import React from 'react';
-import { useState } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,8 @@ const AdminPanel: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      await createPost(postContent, undefined, imageUrl);
+      // Modified to only pass the content parameter which is required
+      await createPost(postContent);
       setPostContent('');
       setImageUrl('');
       toast({

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User } from '@/types/user';
+import { User } from '@/types';
 import AvatarGenerator from './AvatarGenerator';
 import { Eye, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -28,16 +28,23 @@ const UserCard = ({ user, isCurrentUser = false, onRecognitionSuccess }: UserCar
     }
   };
 
+  // Ensure the user has the required properties
+  const safeUser: User = {
+    ...user,
+    avatarEmoji: user.avatarEmoji || '🎭',
+    anonymousAlias: user.anonymousAlias || 'Anonymous'
+  };
+
   return (
     <Card className="hover:border-undercover-purple/30 transition-colors">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <AvatarGenerator emoji={user.avatarEmoji} nickname={user.anonymousAlias} size="md" />
+          <AvatarGenerator emoji={safeUser.avatarEmoji} nickname={safeUser.anonymousAlias} size="md" />
           <div className="flex-1">
-            <h3 className="font-medium">{user.anonymousAlias}</h3>
+            <h3 className="font-medium">{safeUser.anonymousAlias}</h3>
             {/* Only show username if this is the current user */}
             {isCurrentUser && (
-              <p className="text-sm text-muted-foreground">@{user.username}</p>
+              <p className="text-sm text-muted-foreground">@{safeUser.username}</p>
             )}
           </div>
           
@@ -70,7 +77,7 @@ const UserCard = ({ user, isCurrentUser = false, onRecognitionSuccess }: UserCar
         <GuessIdentityModal
           open={guessModalOpen}
           onOpenChange={setGuessModalOpen}
-          targetUser={user}
+          targetUser={safeUser}
           onSuccess={handleRecognitionSuccess}
         />
       )}
