@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -5,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { updatePost } from '@/lib/api';
-import { Post } from '@/types/user';
+import { Post } from '@/types';
 import { X, Image as ImageIcon, Video, Loader2 } from 'lucide-react';
 
 interface EditPostModalProps {
@@ -123,7 +124,25 @@ const EditPostModal: React.FC<EditPostModalProps> = ({ open, onOpenChange, post,
         setIsUploading(false);
       }
 
-      await updatePost(post._id, content, updatedImageUrl || undefined, updatedVideoUrl || undefined);
+      // Create appropriate media array
+      let updatedMedia: Array<{type: 'image' | 'video', url: string}> | undefined;
+      
+      if (updatedImageUrl) {
+        updatedMedia = [{ type: 'image', url: updatedImageUrl }];
+      } else if (updatedVideoUrl) {
+        updatedMedia = [{ type: 'video', url: updatedVideoUrl }];
+      }
+
+      await updatePost(
+        post._id, 
+        content, 
+        updatedMedia,
+        undefined, 
+        undefined,
+        updatedImageUrl || undefined, 
+        updatedVideoUrl || undefined
+      );
+      
       toast({
         title: 'Post updated',
         description: 'Your post has been successfully updated.',
@@ -238,7 +257,7 @@ const EditPostModal: React.FC<EditPostModalProps> = ({ open, onOpenChange, post,
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <ImageIcon className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mb-2" />
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      Add an image
+                      Add an image (max 5MB)
                     </p>
                   </div>
                   <Input
@@ -253,7 +272,7 @@ const EditPostModal: React.FC<EditPostModalProps> = ({ open, onOpenChange, post,
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <Video className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mb-2" />
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      Add a video
+                      Add a video (max 50MB)
                     </p>
                   </div>
                   <Input

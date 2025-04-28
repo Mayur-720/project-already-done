@@ -12,12 +12,17 @@ export interface User {
   referredBy?: string | User;
   ghostCircles?: string[] | GhostCircle[];
   friends?: string[] | User[];
-  recognizedUsers?: string[] | User[];
-  identityRecognizers?: string[] | User[];
+  recognizedUsers?: { userId: string; recognizedAt: string }[];
+  identityRecognizers?: { userId: string; recognizedAt: string }[];
   recognitionAttempts?: number;
   successfulRecognitions?: number;
   recognitionRate?: number;
   recognitionRevocations?: string[] | User[];
+  role?: 'user' | 'admin';
+  posts?: Post[];
+  profilePicture?: string;
+  verified?: boolean;
+  rewardPoints?: number;
   claimedRewards?: {
     tierLevel: number;
     rewardType: string;
@@ -28,7 +33,6 @@ export interface User {
   }[];
   createdAt?: string;
   updatedAt?: string;
-  role?: 'user' | 'admin';
 }
 
 export interface Post {
@@ -37,6 +41,9 @@ export interface Post {
   content: string;
   imageUrl?: string;
   videoUrl?: string;
+  media?: Array<{type: 'image' | 'video', url: string}>;
+  musicUrl?: string;
+  muteOriginalAudio?: boolean;
   anonymousAlias: string;
   avatarEmoji: string;
   ghostCircle?: string | GhostCircle;
@@ -105,4 +112,24 @@ export interface Notification {
   url?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: string[];
+  album: string;
+  album_image?: string;
+  preview_url?: string;
+  duration_ms: number;
+}
+
+export interface Recognition {
+  userId: string;
+  username?: string;
+  fullName?: string;
+  anonymousAlias: string;
+  avatarEmoji: string;
+  recognizedAt: string;
+  profilePicture?: string;
 }

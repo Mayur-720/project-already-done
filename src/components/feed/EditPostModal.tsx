@@ -52,6 +52,7 @@ const EditPostModal: React.FC<EditPostModalProps> = ({
       return;
     }
 
+    // Check file size limits (5MB for images, 50MB for videos)
     const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024; // 50MB for video, 5MB for images
     if (file.size > maxSize) {
       toast({
@@ -102,24 +103,24 @@ const EditPostModal: React.FC<EditPostModalProps> = ({
         setIsUploading(false);
       }
 
-      // Update post with content and either image or video URL
-      if (mediaType === "image") {
-        await updatePost(
-          post._id, 
-          content,
-          uploadedUrl || post.imageUrl,
-          undefined
-        );
-      } else if (mediaType === "video") {
-        await updatePost(
-          post._id, 
-          content,
-          undefined,
-          uploadedUrl || post.videoUrl
-        );
-      } else {
-        await updatePost(post._id, content, undefined, undefined);
-      }
+      // Create media array if needed
+      const updatedMedia = mediaType !== "none" && uploadedUrl ? 
+        [{ 
+          type: mediaType as "image" | "video",
+          url: uploadedUrl
+        }] : 
+        undefined;
+
+      // Update post with content and media
+      await updatePost(
+        post._id, 
+        content,
+        updatedMedia,
+        undefined,
+        undefined,
+        mediaType === "image" ? uploadedUrl || post.imageUrl : undefined,
+        mediaType === "video" ? uploadedUrl || post.videoUrl : undefined
+      );
       
       toast({
         title: "Post updated",

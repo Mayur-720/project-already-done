@@ -1,62 +1,68 @@
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { User } from "@/types/user";
-import { Eye, EyeOff, BarChart3 } from "lucide-react";
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 
 interface RecognitionStatsProps {
-  profile: User;
-  onOpenRecognitionModal: () => void;
+  recognitionAttempts?: number;
+  successfulRecognitions?: number;
+  recognitionRate?: number;
+  recognizedUsers?: number;
+  identityRecognizers?: number;
 }
 
-const RecognitionStats = ({ profile, onOpenRecognitionModal }: RecognitionStatsProps) => {
-  const recognizersCount = profile.identityRecognizers?.length || 0;
-  const recognizedCount = profile.recognizedUsers?.length || 0;
-  const recognitionRate = profile.recognitionAttempts && profile.recognitionAttempts > 0
-    ? Math.round((profile.successfulRecognitions || 0) / profile.recognitionAttempts * 100)
-    : 0;
-
+const RecognitionStats: React.FC<RecognitionStatsProps> = ({
+  recognitionAttempts = 0,
+  successfulRecognitions = 0,
+  recognitionRate = 0,
+  recognizedUsers = 0,
+  identityRecognizers = 0,
+}) => {
   return (
-    <div className="mt-4 space-y-4">
-      <h3 className="font-medium text-sm flex items-center gap-2">
-        <BarChart3 size={16} className="text-muted-foreground" />
-        Recognition Stats
-      </h3>
-      
-      <div className="grid grid-cols-3 gap-2">
-        <div className="text-center p-2 border border-undercover-purple/20 rounded-md bg-undercover-dark/10">
-          <div className="flex justify-center mb-1">
-            <Eye size={16} className="text-undercover-purple" />
-          </div>
-          <p className="font-bold">{recognizersCount}</p>
-          <p className="text-xs text-muted-foreground">Recognized you</p>
-        </div>
-        
-        <div className="text-center p-2 border border-undercover-purple/20 rounded-md bg-undercover-dark/10">
-          <div className="flex justify-center mb-1">
-            <EyeOff size={16} className="text-undercover-purple" />
-          </div>
-          <p className="font-bold">{recognizedCount}</p>
-          <p className="text-xs text-muted-foreground">You recognized</p>
-        </div>
-        
-        <div className="text-center p-2 border border-undercover-purple/20 rounded-md bg-undercover-dark/10">
-          <div className="flex justify-center mb-1">
-            <BarChart3 size={16} className="text-undercover-purple" />
-          </div>
-          <p className="font-bold">{recognitionRate}%</p>
-          <p className="text-xs text-muted-foreground">Recognition rate</p>
-        </div>
-      </div>
-      
-      <Button 
-        variant="outline" 
-        onClick={onOpenRecognitionModal}
-        className="w-full border-undercover-purple/30 text-undercover-light-purple hover:bg-undercover-purple/10"
-      >
-        View Recognition Details
-      </Button>
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <StatCard
+        label="Attempts"
+        value={recognitionAttempts}
+        description="Recognition attempts"
+      />
+      <StatCard
+        label="Success"
+        value={successfulRecognitions}
+        description="Successful recognitions"
+      />
+      <StatCard
+        label="Rate"
+        value={`${recognitionRate.toFixed(0)}%`}
+        description="Recognition success rate"
+      />
+      <StatCard
+        label="Recognized"
+        value={recognizedUsers}
+        description="Users you've recognized"
+      />
+      <StatCard
+        label="Recognizers"
+        value={identityRecognizers}
+        description="Users who recognized you"
+      />
     </div>
+  );
+};
+
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  description: string;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value, description }) => {
+  return (
+    <Card className="bg-gradient-to-br from-gray-900/50 to-gray-900/30 border-purple-500/30 backdrop-blur-sm">
+      <CardContent className="p-4 text-center">
+        <p className="text-xs text-gray-400">{label}</p>
+        <p className="text-2xl font-bold text-purple-400">{value}</p>
+        <p className="text-xs text-gray-400 mt-1">{description}</p>
+      </CardContent>
+    </Card>
   );
 };
 

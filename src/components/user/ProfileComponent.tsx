@@ -1,5 +1,4 @@
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import EditProfileModal from './EditProfileModal';
 import { addFriend, getUserPosts } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Post, User } from '@/types/user';
+import { User, Post } from '@/types';
 import RecognitionStats from '@/components/recognition/RecognitionStats';
 import RecognitionModal from '@/components/recognition/RecognitionModal';
 import WhisperModal from '@/components/whisper/WhisperModal';
@@ -164,7 +163,15 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
 
           <div className="mt-6">
             <h2 className="text-lg font-semibold mb-2">Recognition Stats</h2>
-            <RecognitionStats user={displayUser} />
+            <RecognitionStats 
+              recognitionAttempts={displayUser.recognitionAttempts}
+              successfulRecognitions={displayUser.successfulRecognitions}
+              recognitionRate={(displayUser.successfulRecognitions && displayUser.recognitionAttempts) 
+                ? (displayUser.successfulRecognitions / displayUser.recognitionAttempts * 100) 
+                : 0}
+              recognizedUsers={displayUser.recognizedUsers?.length || 0}
+              identityRecognizers={displayUser.identityRecognizers?.length || 0}
+            />
           </div>
 
           <div className="mt-8">
@@ -259,7 +266,7 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
         <EditProfileModal
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
-          user={authUser}
+          initialData={authUser}
           onSuccess={handleEditSuccess}
         />
       )}
@@ -269,13 +276,15 @@ const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => 
           <RecognitionModal
             open={isRecognizeModalOpen}
             onOpenChange={setIsRecognizeModalOpen}
-            targetUser={displayUser as User}
+            targetUserId={displayUser._id}
+            targetAlias={displayUser.anonymousAlias}
           />
 
           <WhisperModal
             open={isWhisperModalOpen}
             onOpenChange={setIsWhisperModalOpen}
-            recipient={displayUser as User}
+            recipientId={displayUser._id}
+            recipientAlias={displayUser.anonymousAlias}
           />
         </>
       )}

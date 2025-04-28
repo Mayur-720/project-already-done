@@ -1,900 +1,486 @@
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  Heart,
-  MessageCircle,
-  Info,
-  MoreVertical,
-  Trash,
-  Edit,
-  Send,
-  Eye,
-  Share2,
-  MousePointer2,
-  Pin,
-  Play,
-  Pause,
-  Music,
-  VolumeX,
-  Volume,
-  ArrowLeft,
-  ArrowRight,
-  Image,
-  Video
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
+import React, { useState, useRef, useEffect } from 'react';
+import { User, Post } from '@/types';
+import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
+import { Heart, Share2, MessageCircle, MoreHorizontal, ChevronLeft, ChevronRight, Play, Pause, Music, Volume2, VolumeX } from 'lucide-react';
+import { likePost, incrementShareCount } from '@/lib/api';
+import { useNavigate } from 'react-router-dom';
+import DeletePostDialog from './DeletePostDialog';
+import EditPostModal from './EditPostModal';
+import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import AvatarGenerator from '../user/AvatarGenerator';
-import { useAuth } from '@/context/AuthContext';
-import {
-  likePost,
-  addComment,
-  getComments,
-  deletePost,
-  editComment,
-  deleteComment,
-  replyToComment,
-  incrementShareCount,
-} from '@/lib/api';
-import { formatDistanceToNow } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
-import EditPostModal from './EditPostModal';
-import DeletePostDialog from './DeletePostDialog';
-import CommentItem from './CommentItem';
-import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
-import { User } from '@/types/user';
-import { useNavigate } from 'react-router-dom';
+} from "@/components/ui/dropdown-menu"
 
-interface Post {
-  _id: string;
-  user: string;
-  username?: string;
-  anonymousAlias: string;
-  avatarEmoji: string;
-  content: string;
-  media?: Array<{type: 'image' | 'video', url: string}>;
+interface MediaCarouselProps {
+  media: Array<{type: 'image' | 'video', url: string}>;
   musicUrl?: string;
   muteOriginalAudio?: boolean;
-  imageUrl?: string;
-  videoUrl?: string;
-  likes: { user: string; anonymousAlias: string; }[];
-  comments: any[];
-  createdAt: string;
-  updatedAt: string;
-  expiresAt: string;
-  shareCount?: number;
-  isAdminPost?: boolean;
-  isPinned?: boolean;
-  pinnedUntil?: string;
-  ghostCircle?: string;
 }
 
 interface PostCardProps {
   post: Post;
-  currentUserId?: string;
-  onRefresh?: () => void;
-  showOptions?: boolean;
+  onRefresh: () => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({
-  post,
-  currentUserId,
-  onRefresh,
-  showOptions = false,
-}) => {
-  const { user, isAdmin } = useAuth();
-  const navigate = useNavigate();
-
+// Create a custom carousel component
+const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOriginalAudio = false }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(muteOriginalAudio);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-  const [showPlayPauseIcon, setShowPlayPauseIcon] = useState(false);
-  const [isMuted, setIsMuted] = useState(post.muteOriginalAudio || false);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
 
-  const [likeCount, setLikeCount] = useState(post.likes?.length || 0);
-  const [shareCount, setShareCount] = useState(post.shareCount || 0);
-  const [guessModalOpen, setGuessModalOpen] = useState(false);
-  const [isLiked, setIsLiked] = useState(
-    post.likes?.some((like) => like.user === currentUserId)
-  );
-  const [isLiking, setIsLiking] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
-  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
-  const [isPinned, setIsPinned] = useState(post.isPinned || false);
-  const [pinDuration, setPinDuration] = useState<string>('1d');
-
-  const isOwnPost = post.user === currentUserId;
-  const isAdminPost = post.isAdminPost || post.anonymousAlias === 'TheAdmin';
-
-  // Get media items from post
-  const mediaItems = post.media && post.media.length > 0 
-    ? post.media 
-    : (post.imageUrl ? [{ type: 'image', url: post.imageUrl }] : [])
-      .concat(post.videoUrl ? [{ type: 'video', url: post.videoUrl }] : []);
-
-  // Check if post has multiple media items
-  const hasMultipleMedia = mediaItems.length > 1;
-  // Check if post has custom music
-  const hasCustomMusic = post.musicUrl && post.musicUrl.length > 0;
-
-  // Handle media change
-  const handleMediaChange = (index: number) => {
-    // Reset all videos to paused state
-    videoRefs.current.forEach(videoRef => {
-      if (videoRef) {
-        videoRef.pause();
-      }
-    });
-    
-    setActiveMediaIndex(index);
-    
-    // Play the new video automatically if it's a video
-    if (mediaItems[index]?.type === 'video' && videoRefs.current[index]) {
-      videoRefs.current[index]?.play();
-      setIsVideoPlaying(true);
-    }
-  };
-
-  // Handle music toggle
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    
-    if (videoRefs.current[activeMediaIndex]) {
-      videoRefs.current[activeMediaIndex].muted = !isMuted;
-    }
-  };
-
+  // Initialize video refs array
   useEffect(() => {
-    // Initialize video refs array
-    videoRefs.current = videoRefs.current.slice(0, mediaItems.length);
-    
-    // Play first video if it exists
-    if (mediaItems.length > 0 && mediaItems[activeMediaIndex]?.type === 'video') {
-      if (videoRefs.current[activeMediaIndex]) {
-        videoRefs.current[activeMediaIndex].play();
-        setIsVideoPlaying(true);
-        
-        if (isMuted || post.muteOriginalAudio) {
-          videoRefs.current[activeMediaIndex].muted = true;
-          setIsMuted(true);
+    videoRefs.current = videoRefs.current.slice(0, media.length);
+  }, [media.length]);
+
+  // Autoplay videos when they become active
+  useEffect(() => {
+    const currentMedia = media[currentIndex];
+    if (currentMedia?.type === 'video') {
+      const videoElement = videoRefs.current[currentIndex];
+      if (videoElement) {
+        if (isPlaying) {
+          videoElement.muted = isMuted;
+          videoElement.play().catch(error => console.error('Error playing video:', error));
+        } else {
+          videoElement.pause();
         }
       }
     }
-    
-    // Initialize audio if exists
-    if (hasCustomMusic && audioRef.current) {
-      audioRef.current.volume = 0.5;
-      audioRef.current.play().catch(e => console.log('Auto-play prevented', e));
-    }
-  }, [post, activeMediaIndex]);
 
-  const handleAliasClick = (userId: string, alias: string) => {
-    navigate(`/profile/${userId}`, { state: { anonymousAlias: alias } });
-  };
-
-  const handleVideoToggle = (index: number) => {
-    const videoRef = videoRefs.current[index];
-    if (!videoRef) return;
-  
-    if (videoRef.paused) {
-      videoRef.play();
-      setIsVideoPlaying(true);
-      
-      // If there's custom music, ensure it plays too
-      if (hasCustomMusic && audioRef.current) {
-        audioRef.current.play().catch(e => console.log('Auto-play prevented', e));
-      }
-    } else {
-      videoRef.pause();
-      setIsVideoPlaying(false);
-      
-      // If there's custom music, pause it too
-      if (hasCustomMusic && audioRef.current) {
+    // Handle background music
+    if (musicUrl && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(error => console.error('Error playing audio:', error));
+      } else {
         audioRef.current.pause();
       }
     }
-  
-    setShowPlayPauseIcon(true);
-    setTimeout(() => setShowPlayPauseIcon(false), 1000);
+  }, [currentIndex, isPlaying, isMuted, media, musicUrl]);
+
+  const goToPrevious = () => {
+    setCurrentIndex((prevIndex) => 
+      prevIndex === 0 ? media.length - 1 : prevIndex - 1
+    );
   };
 
-  const handleLike = async () => {
-    if (isLiking) return;
-
-    try {
-      setIsLiking(true);
-      const response = await likePost(post._id);
-
-      setLikeCount(response.likes.length);
-      setIsLiked(!isLiked);
-
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not like this post. Please try again.',
-      });
-      console.error('Like error:', error);
-    } finally {
-      setIsLiking(false);
-    }
+  const goToNext = () => {
+    setCurrentIndex((prevIndex) => 
+      prevIndex === media.length - 1 ? 0 : prevIndex + 1
+    );
   };
 
-  const handlePinPost = async (duration: string) => {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setIsPinned(true);
-      setPinDuration(duration);
-      
-      let durationText = '24 hours';
-      if (duration === '7d') durationText = '7 days';
-      if (duration === 'indefinite') durationText = 'indefinitely';
-      
-      toast({
-        title: 'Post pinned',
-        description: `This post has been pinned for ${durationText}.`,
-      });
-      
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not pin this post. Please try again.',
-      });
-    }
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
   };
 
-  const handleShare = async (platform?: 'whatsapp' | 'instagram' | 'link') => {
-    try {
-      setIsSharing(true);
-
-      const postUrl = `${window.location.origin}/post/${post._id}`;
-      const shareText = `${post.anonymousAlias}'s post: ${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}`;
-
-      switch (platform) {
-        case 'whatsapp': {
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${postUrl}`)}`;
-          window.open(whatsappUrl, '_blank');
-          break;
-        }
-
-        case 'instagram': {
-          const instagramUrl = `https://www.instagram.com/?url=${encodeURIComponent(postUrl)}`;
-          window.open(instagramUrl, '_blank');
-          break;
-        }
-
-        case 'link':
-        default:
-          if (navigator.share) {
-            await navigator.share({
-              title: `${post.anonymousAlias}'s post`,
-              text: shareText,
-              url: postUrl,
-            });
-            toast({
-              title: 'Post shared',
-              description: 'The post has been shared successfully!',
-            });
-          } else {
-            await navigator.clipboard.writeText(postUrl);
-            toast({
-              title: 'Link copied',
-              description: 'Post link has been copied to clipboard!',
-            });
-          }
-          break;
-      }
-
-      const response = await incrementShareCount(post._id);
-      setShareCount(response.shareCount);
-
-    } catch (error) {
-      console.error('Error sharing post:', error);
-
-      if (error instanceof Error && error.name !== 'AbortError') {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not share this post. Please try again.',
-        });
-      }
-    } finally {
-      setIsSharing(false);
-    }
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
   };
 
-  const handleToggleComments = async () => {
-    if (!showComments) {
-      loadComments();
-    }
-    setShowComments(!showComments);
-  };
-
-  const loadComments = async () => {
-    if (isLoadingComments) return;
-
-    try {
-      setIsLoadingComments(true);
-      const fetchedComments = await getComments(post._id);
-      console.log('Fetching comments for post with ID:', post._id);
-
-      setComments(fetchedComments);
-    } catch (error) {
-      console.error('Error loading comments:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not load comments. Please try again.',
-      });
-    } finally {
-      setIsLoadingComments(false);
-    }
-  };
-
-  const handleSubmitComment = async () => {
-    if (!newComment.trim() || isSubmitting) return;
-
-    try {
-      setIsSubmitting(true);
-      const response = await addComment(
-        post._id,
-        newComment.trim(),
-        user.anonymousAlias
-      );
-
-      setNewComment('');
-      loadComments();
-
-      toast({
-        title: 'Comment added',
-        description: 'Your comment has been posted successfully!',
-      });
-    } catch (error) {
-      console.error('Error posting comment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not post your comment. Please try again.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditComment = async (commentId: string, content: string) => {
-    try {
-      await editComment(post._id, commentId, content);
-      toast({
-        title: 'Comment updated',
-        description: 'Your comment has been updated successfully!',
-      });
-      loadComments();
-    } catch (error) {
-      console.error('Error editing comment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not edit your comment. Please try again.',
-      });
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      await deleteComment(post._id, commentId);
-      toast({
-        title: 'Comment deleted',
-        description: 'Your comment has been deleted successfully!',
-      });
-      loadComments();
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not delete your comment. Please try again.',
-      });
-    }
-  };
-
-  const handleReplyToComment = async (commentId: string, content: string) => {
-    try {
-      await replyToComment(post._id, commentId, content, user.anonymousAlias);
-      toast({
-        title: 'Reply added',
-        description: 'Your reply has been posted successfully!',
-      });
-      loadComments();
-    } catch (error) {
-      console.error('Error posting reply:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not post your reply. Please try again.',
-      });
-    }
-  };
-
-  const handleDoubleClick = async () => {
-    if (!isLiked) {
-      setShowLikeAnimation(true);
-      await handleLike();
-      setTimeout(() => setShowLikeAnimation(false), 1000);
-    }
-  };
-
-  const postTime = post.createdAt
-    ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })
-    : 'Unknown time';
-
-  const identity = {
-    emoji: post.avatarEmoji || '🎭',
-    nickname: post.anonymousAlias || 'Anonymous',
-    color: '#9333EA',
-  };
-
-  const targetUser: User = {
-    _id: post.user,
-    anonymousAlias: post.anonymousAlias,
-    avatarEmoji: post.avatarEmoji,
-    username: post.username || '',
-    email: '',
-    fullName: '',
-    recognitionAttempts: 0,
-    successfulRecognitions: 0,
-    recognizedUsers: [],
-    identityRecognizers: [],
-  };
-
-  const formatMediaUrl = (url: string) => {
-    return url.startsWith('http')
-      ? url
-      : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${url}`;
-  };
-
-  const cardClassName = `border shadow-md hover:shadow-lg transition-shadow mb-4 ${
-    isAdminPost ? 'admin-post' : 'border-undercover-purple/20 bg-card'
-  } ${isPinned ? 'pinned-post' : ''}`;
+  if (media.length === 0) return null;
 
   return (
-    <Card className={cardClassName}>
-      <div className="relative" onDoubleClick={handleDoubleClick}>
-        {showLikeAnimation && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <Heart 
-              className="text-red-500 animate-scale-in" 
-              size={64} 
-              fill="currentColor"
-            />
-          </div>
-        )}
-        <CardHeader className="p-4 pb-2" onClick={() => handleAliasClick(post.user, post.anonymousAlias)}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <AvatarGenerator
-                emoji={post.avatarEmoji}
-                nickname={post.anonymousAlias}
-                color={isAdminPost ? '#FFC107' : '#9333EA'}
+    <div className="relative w-full">
+      {/* Media display */}
+      <div className="relative overflow-hidden w-full rounded-lg aspect-square">
+        {media.map((item, index) => (
+          <div 
+            key={index}
+            className={`absolute top-0 left-0 w-full h-full transition-opacity duration-300 ${
+              index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            }`}
+          >
+            {item.type === 'image' ? (
+              <img 
+                src={item.url} 
+                alt={`Post media ${index + 1}`}
+                className="w-full h-full object-cover"
               />
-              <div className="flex flex-col">
-                <span className="font-medium text-sm flex items-center gap-1">
-                  {post.anonymousAlias}
-                  {isAdminPost && <span className="text-xs text-amber-400">(Admin)</span>}
-                </span>
-                {isPinned && (
-                  <span className="text-xs text-orange-400 flex items-center">
-                    <Pin size={10} className="mr-1" /> Pinned
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{postTime}</span>
-              {(showOptions && isOwnPost) || isAdmin ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical size={16} />
-                      <span className="sr-only">More options</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {isOwnPost && (
-                      <>
-                        <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                          <Edit size={16} className="mr-2" />
-                          Edit Post
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteDialogOpen(true)}
-                          className="text-red-500 focus:text-red-500"
-                        >
-                          <Trash size={16} className="mr-2" />
-                          Delete Post
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    {isAdmin && !isPinned && (
-                      <>
-                        <DropdownMenuItem onClick={() => handlePinPost('1d')}>
-                          <Pin size={16} className="mr-2" />
-                          Pin for 24 hours
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handlePinPost('7d')}>
-                          <Pin size={16} className="mr-2" />
-                          Pin for 7 days
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handlePinPost('indefinite')}>
-                          <Pin size={16} className="mr-2" />
-                          Pin indefinitely
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    {isAdmin && isPinned && (
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setIsPinned(false); 
-                          toast({ title: 'Post unpinned', description: 'This post is no longer pinned.' });
-                        }}
-                      >
-                        <Pin size={16} className="mr-2" />
-                        Unpin Post
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : null}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 pt-2">
-          <p className="text-sm text-foreground mb-2">{post.content}</p>
-
-          {mediaItems.length > 0 && (
-            <div className="mt-3 rounded-md overflow-hidden relative">
-              {hasCustomMusic && (
-                <audio 
-                  ref={audioRef} 
-                  src={formatMediaUrl(post.musicUrl || '')} 
-                  loop 
-                  hidden 
-                />
-              )}
-              
-              {hasMultipleMedia ? (
-                <Carousel
-                  className="w-full"
-                  onValueChange={value => {
-                    const index = parseInt(value);
-                    if (!isNaN(index)) handleMediaChange(index);
-                  }}
-                >
-                  <CarouselContent>
-                    {mediaItems.map((item, index) => (
-                      <CarouselItem key={index}>
-                        {item.type === 'image' ? (
-                          <img
-                            src={formatMediaUrl(item.url)}
-                            alt={`Media ${index + 1}`}
-                            className="w-full h-auto max-h-80 object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.onerror = null;
-                              target.src = '/placeholder.svg';
-                            }}
-                          />
-                        ) : (
-                          <div className="relative">
-                            <video
-                              ref={el => videoRefs.current[index] = el}
-                              src={formatMediaUrl(item.url)}
-                              autoPlay={index === activeMediaIndex}
-                              muted={isMuted}
-                              playsInline
-                              loop
-                              onClick={() => handleVideoToggle(index)}
-                              className="w-full h-auto max-h-80 object-contain cursor-pointer"
-                              controlsList="nodownload nofullscreen noremoteplayback"
-                            />
-                            {index === activeMediaIndex && showPlayPauseIcon && (
-                              <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                                {isVideoPlaying ? (
-                                  <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
-                                ) : (
-                                  <Play className="w-16 h-16 text-white/80 animate-scale-in" />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <div className="absolute inset-y-0 left-0 flex items-center">
-                    <CarouselPrevious className="relative left-0 translate-x-0" />
-                  </div>
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <CarouselNext className="relative right-0 translate-x-0" />
-                  </div>
-                  <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-                    {mediaItems.map((_, index) => (
-                      <span
-                        key={index}
-                        className={`h-1.5 rounded-full transition-all ${
-                          index === activeMediaIndex ? "w-4 bg-white" : "w-1.5 bg-white/60"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </Carousel>
-              ) : (
-                mediaItems[0]?.type === 'image' ? (
-                  <img
-                    src={formatMediaUrl(mediaItems[0].url)}
-                    alt="Post image"
-                    className="w-full h-auto max-h-80 object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.src = '/placeholder.svg';
-                    }}
-                  />
-                ) : (
-                  <div className="relative group">
-                    <video
-                      ref={el => videoRefs.current[0] = el}
-                      src={formatMediaUrl(mediaItems[0]?.url || '')}
-                      autoPlay
-                      muted={isMuted}
-                      playsInline
-                      loop
-                      onClick={() => handleVideoToggle(0)}
-                      className="w-full h-auto max-h-80 object-contain cursor-pointer"
-                      controlsList="nodownload nofullscreen noremoteplayback"
-                    />
-                    {showPlayPauseIcon && (
-                      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                        {isVideoPlaying ? (
-                          <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
-                        ) : (
-                          <Play className="w-16 h-16 text-white/80 animate-scale-in" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              )}
-              
-              {/* Media controls */}
-              <div className="absolute bottom-3 right-3 flex gap-2">
-                {hasCustomMusic && (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 rounded-full bg-black/50 text-white border-none hover:bg-black/70"
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (audioRef.current) {
-                        if (audioRef.current.paused) {
-                          audioRef.current.play();
-                        } else {
-                          audioRef.current.pause();
-                        }
-                      }
-                    }}
-                  >
-                    <Music size={14} />
-                  </Button>
-                )}
-                
-                {(mediaItems[activeMediaIndex]?.type === 'video' || post.videoUrl) && (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 rounded-full bg-black/50 text-white border-none hover:bg-black/70"
-                    onClick={e => {
-                      e.stopPropagation();
-                      toggleMute();
-                    }}
-                  >
-                    {isMuted ? (
-                      <VolumeX size={14} />
-                    ) : (
-                      <Volume size={14} />
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="p-4 pt-0 flex flex-col">
-          <div className="flex items-center justify-between w-full gap-2">
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center space-x-1 text-xs"
-                onClick={handleLike}
-                disabled={isLiking}
-              >
-                <Heart
-                  size={16}
-                  className={isLiked ? 'fill-red-500 text-red-500' : ''}
-                />
-                <span>{likeCount}</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center space-x-1 text-xs"
-                onClick={handleToggleComments}
-              >
-                <MessageCircle size={16} />
-                <span>{comments.length || post.comments?.length || 0}</span>
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center space-x-1 text-xs"
-                    disabled={isSharing}
-                  >
-                    <MousePointer2 size={16} className="rotate-90" />
-                    <span>{shareCount}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleShare('whatsapp')}>
-                    Share via WhatsApp
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleShare('instagram')}>
-                    Share via Instagram
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleShare('link')}>
-                    Copy Link
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {!isOwnPost && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setGuessModalOpen(true)}
-                title="Guess identity"
-                className="flex items-center space-x-1 text-xs border-undercover-purple/20 hover:bg-undercover-purple/10"
-              >
-                <Eye size={14} /> <span>Guess?</span>
-              </Button>
+            ) : (
+              <video
+                ref={(el) => { videoRefs.current[index] = el; }}
+                src={item.url}
+                loop
+                playsInline
+                muted={isMuted}
+                className="w-full h-full object-cover"
+                onClick={togglePlayPause}
+              />
             )}
           </div>
+        ))}
 
-          {showComments && (
-            <div className="mt-4 w-full">
-              <div className="border-t border-border pt-4">
-                {isLoadingComments ? (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin h-5 w-5 border-2 border-undercover-purple rounded-full border-t-transparent"></div>
-                  </div>
-                ) : comments.length > 0 ? (
-                  <div className="space-y-4 max-h-60 overflow-y-auto">
-                    {comments.map((comment) => (
-                      <CommentItem
-                        key={comment._id}
-                        comment={comment}
-                        postId={post._id}
-                        onDelete={handleDeleteComment}
-                        onEdit={handleEditComment}
-                        onReply={handleReplyToComment}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground text-sm py-2">
-                    No comments yet
-                  </p>
-                )}
-
-                <div className="mt-4 flex space-x-2">
-                  <Textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Add a comment..."
-                    className="resize-none h-10 py-2"
-                  />
-                  <Button
-                    onClick={handleSubmitComment}
-                    className="bg-undercover-purple hover:bg-undercover-deep-purple"
-                    disabled={!newComment.trim() || isSubmitting}
-                  >
-                    <Send size={16} />
-                  </Button>
-                </div>
-              </div>
+        {/* Play/pause overlay for videos */}
+        {media[currentIndex]?.type === 'video' && (
+          <div 
+            className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
+              isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'
+            }`}
+            onClick={togglePlayPause}
+          >
+            <div className="rounded-full bg-black bg-opacity-50 p-3">
+              {isPlaying ? (
+                <Pause className="h-10 w-10 text-white" />
+              ) : (
+                <Play className="h-10 w-10 text-white" />
+              )}
             </div>
-          )}
-        </CardFooter>
+          </div>
+        )}
 
-        {/* Modals */}
-        {isOwnPost && (
+        {/* Background music */}
+        {musicUrl && (
+          <audio
+            ref={audioRef}
+            src={musicUrl}
+            loop
+            className="hidden"
+          />
+        )}
+
+        {/* Navigation arrows if more than one media item */}
+        {media.length > 1 && (
           <>
-            <EditPostModal
-              open={editModalOpen}
-              onOpenChange={setEditModalOpen}
-              post={post}
-              onSuccess={() => {
-                if (onRefresh) onRefresh();
-              }}
-            />
-
-            <DeletePostDialog
-              open={deleteDialogOpen}
-              onOpenChange={setDeleteDialogOpen}
-              postId={post._id}
-              onSuccess={() => {
-                if (onRefresh) onRefresh();
-              }}
-            />
+            <button 
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-1 z-20"
+              onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
+            >
+              <ChevronLeft className="h-6 w-6 text-white" />
+            </button>
+            <button 
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-1 z-20"
+              onClick={(e) => { e.stopPropagation(); goToNext(); }}
+            >
+              <ChevronRight className="h-6 w-6 text-white" />
+            </button>
           </>
         )}
 
-        {!isOwnPost && (
-          <GuessIdentityModal
-            open={guessModalOpen}
-            onOpenChange={setGuessModalOpen}
-            targetUser={targetUser}
-            onSuccess={() => {
-              if (onRefresh) onRefresh();
-              toast({
-                title: 'Recognition successful! 🎉',
-                description: `You correctly identified ${post.anonymousAlias}!`,
-              });
-            }}
+        {/* Pagination indicators */}
+        {media.length > 1 && (
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-20">
+            {media.map((_, index) => (
+              <div 
+                key={index}
+                className={`w-2 h-2 rounded-full ${
+                  index === currentIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Media controls */}
+        <div className="absolute bottom-4 right-4 flex gap-2 z-20">
+          {musicUrl && (
+            <button
+              className="bg-black bg-opacity-50 rounded-full p-2"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <Music className="h-4 w-4 text-white" />
+            </button>
+          )}
+          
+          {media[currentIndex]?.type === 'video' && (
+            <button
+              className="bg-black bg-opacity-50 rounded-full p-2"
+              onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+            >
+              {isMuted ? (
+                <VolumeX className="h-4 w-4 text-white" />
+              ) : (
+                <Volume2 className="h-4 w-4 text-white" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main PostCard component
+const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isGuessIdentityOpen, setIsGuessIdentityOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const getTimeAgo = (date: string) => {
+    try {
+      return formatDistanceToNow(new Date(date), { addSuffix: true });
+    } catch {
+      return 'Unknown time';
+    }
+  };
+
+  const togglePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(!isMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+    }
+  };
+
+  const { mutate: like, isLoading: isLikeLoading } = useMutation(
+    () => likePost(post._id),
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['posts']);
+        queryClient.invalidateQueries(['post', post._id]);
+        toast({
+          title: 'Post liked',
+          description: 'You have liked this post',
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.message || 'Failed to like post. Please try again.',
+        });
+      },
+    }
+  );
+
+  const { mutate: share, isLoading: isShareLoading } = useMutation(
+    () => incrementShareCount(post._id),
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['posts']);
+        queryClient.invalidateQueries(['post', post._id]);
+        toast({
+          title: 'Post shared',
+          description: 'You have shared this post',
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.message || 'Failed to share post. Please try again.',
+        });
+      },
+    }
+  );
+
+  const handleViewPost = () => {
+    navigate(`/post/${post._id}`);
+  };
+
+  const isOwnPost = typeof post.user === 'object' && user?._id === post.user._id;
+
+  // Modify the render method to use our new MediaCarousel component
+  return (
+    <div className="bg-card rounded-lg shadow-md overflow-hidden">
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full text-2xl">
+            {post.avatarEmoji || '🎭'}
+          </div>
+          <div>
+            <h3 className="font-semibold">{post.anonymousAlias || 'Anonymous'}</h3>
+            <p className="text-xs text-gray-500">{getTimeAgo(post.createdAt)}</p>
+          </div>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleViewPost}>View Post</DropdownMenuItem>
+            {isOwnPost && (
+              <>
+                <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+            {!isOwnPost && (
+              <DropdownMenuItem onClick={() => setIsGuessIdentityOpen(true)}>
+                Guess Identity
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+    {/* Replace media rendering with our new carousel */}
+    {post.media && post.media.length > 0 ? (
+      <div className="mb-4">
+        <MediaCarousel 
+          media={post.media} 
+          musicUrl={post.musicUrl} 
+          muteOriginalAudio={post.muteOriginalAudio}
+        />
+      </div>
+    ) : post.imageUrl ? (
+      <div className="mb-4">
+        <img
+          src={post.imageUrl}
+          alt="Post"
+          className="w-full h-auto rounded-lg"
+        />
+        {post.musicUrl && (
+          <audio 
+            src={post.musicUrl} 
+            autoPlay 
+            loop 
+            className="hidden"
           />
         )}
       </div>
-    </Card>
+    ) : post.videoUrl ? (
+      <div className="mb-4 relative">
+        <video
+          ref={videoRef}
+          src={post.videoUrl}
+          className="w-full h-auto rounded-lg"
+          loop
+          playsInline
+          muted={isMuted}
+          onClick={togglePlayPause}
+          autoPlay
+        />
+        
+        {/* Play/pause overlay for videos */}
+        <div 
+          className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
+            isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'
+          }`}
+        >
+          <div className="rounded-full bg-black bg-opacity-50 p-3">
+            {isPlaying ? (
+              <Pause className="h-10 w-10 text-white" />
+            ) : (
+              <Play className="h-10 w-10 text-white" />
+            )}
+          </div>
+        </div>
+
+        {post.musicUrl && (
+          <audio 
+            ref={audioRef}
+            src={post.musicUrl} 
+            loop 
+            className="hidden"
+          />
+        )}
+        
+        {/* Video controls */}
+        <div className="absolute bottom-4 right-4 flex gap-2">
+          {post.videoUrl && (
+            <button
+              className="bg-black bg-opacity-50 rounded-full p-2"
+              onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+            >
+              {isMuted ? (
+                <VolumeX className="h-4 w-4 text-white" />
+              ) : (
+                <Volume2 className="h-4 w-4 text-white" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    ) : null}
+
+      <div className="p-4">
+        {post.content && <p className="mb-4">{post.content}</p>}
+
+        <div className="flex justify-between items-center text-gray-500">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                like();
+              }}
+              disabled={isLikeLoading}
+              className="hover:text-primary transition-colors"
+            >
+              <Heart className="h-5 w-5" fill={post.likes?.some((like) => typeof like.user === 'string' ? like.user === user?._id : like.user._id === user?._id) ? 'currentColor' : 'none'} />
+            </button>
+            <span>{post.likes?.length || 0}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                share();
+              }}
+              disabled={isShareLoading}
+              className="hover:text-primary transition-colors"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+            <span>{post.shareCount || 0}</span>
+          </div>
+
+          <button
+            onClick={handleViewPost}
+            className="flex items-center gap-2 hover:text-primary transition-colors"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span>{post.comments?.length || 0}</span>
+          </button>
+        </div>
+      </div>
+
+      <DeletePostDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        postId={post._id}
+        onSuccess={onRefresh}
+      />
+
+      <EditPostModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        post={post}
+        onSuccess={onRefresh}
+      />
+
+      <GuessIdentityModal
+        open={isGuessIdentityOpen}
+        onOpenChange={setIsGuessIdentityOpen}
+        postId={post._id}
+      />
+    </div>
   );
 };
 

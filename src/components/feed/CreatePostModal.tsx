@@ -1,5 +1,4 @@
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +8,10 @@ import { useAuth } from '@/context/AuthContext';
 import { Image, Music, Plus, Video, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import SpotifyMusicSelector from '../spotify/SpotifyMusicSelector';
+import { SpotifyTrack } from '@/types';
 
 interface CreatePostModalProps {
   open: boolean;
@@ -22,7 +25,7 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [media, setMedia] = useState<Array<{type: 'image' | 'video', url: string, file?: File}>>([]);
-  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
   const [muteOriginalAudio, setMuteOriginalAudio] = useState(false);
   const [activeTab, setActiveTab] = useState('content');
 
@@ -35,6 +38,19 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
         toast({
           title: "Too many files",
           description: "You can upload a maximum of 10 media files per post",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check file sizes (5MB for images, 50MB for videos)
+      const maxSize = type === 'video' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+      const oversizedFiles = files.filter(file => file.size > maxSize);
+      
+      if (oversizedFiles.length > 0) {
+        toast({
+          title: "Files too large",
+          description: `${type === 'video' ? 'Videos' : 'Images'} must be under ${maxSize / (1024 * 1024)}MB each`,
           variant: "destructive"
         });
         return;
@@ -59,30 +75,9 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
       });
     }
   };
-  
-  const handleMusicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setMusicFile(file);
-      
-      // Create preview URL
-      const fileReader = new FileReader();
-      fileReader.onload = (event) => {
-        if (event.target?.result) {
-          // You could set a music preview URL here if needed
-        }
-      };
-      fileReader.readAsDataURL(file);
-    }
-  };
 
   const removeMedia = (index: number) => {
     setMedia(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeMusic = () => {
-    setMusicFile(null);
-    setMuteOriginalAudio(false);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -100,17 +95,36 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
     try {
       setIsSubmitting(true);
 
-      // First, we need to process any files
-      const processedMedia = media.map(item => ({
-        type: item.type,
-        url: item.url
-      }));
+      // Upload media files to Cloudinary
+      const uploadPromises = media.map(async (item) => {
+        if (!item.file) return item; // Already has a URL
+        
+        const formData = new FormData();
+        formData.append("file", item.file);
+        formData.append("upload_preset", "undercover");
 
-      // For now, just use the local URLs - in a real app, you'd upload to server
+        const res = await fetch("https://api.cloudinary.com/v1_1/ddtqri4py/auto/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        return {
+          type: item.type,
+          url: data.secure_url
+        };
+      });
+
+      const uploadedMedia = await Promise.all(uploadPromises);
+
+      // Get music URL from selected track if available
+      const musicUrl = selectedTrack?.preview_url || undefined;
+
+      // Create the post with all media and music
       await createPost(
         content, 
-        processedMedia, 
-        musicFile ? URL.createObjectURL(musicFile) : undefined, 
+        uploadedMedia, 
+        musicUrl, 
         muteOriginalAudio,
         ghostCircleId
       );
@@ -120,9 +134,10 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
         description: "Your post has been published anonymously!"
       });
       
+      // Reset the form
       setContent('');
       setMedia([]);
-      setMusicFile(null);
+      setSelectedTrack(null);
       setMuteOriginalAudio(false);
       onOpenChange(false);
       if (onSuccess) onSuccess();
@@ -198,7 +213,10 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
               ) : (
                 <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
                   <p className="text-sm text-muted-foreground mb-2">
-                    Upload images or videos for your post
+                    Upload images or videos for your post (max 10 files)
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Images must be under 5MB each, videos under 50MB each
                   </p>
                 </div>
               )}
@@ -244,62 +262,23 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
             </TabsContent>
             
             <TabsContent value="music" className="space-y-4">
-              {musicFile ? (
-                <div className="border rounded-md p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Music size={16} />
-                      <span className="text-sm truncate max-w-[200px]">{musicFile.name}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={removeMusic}
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={muteOriginalAudio}
-                        onChange={() => setMuteOriginalAudio(!muteOriginalAudio)}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm">Mute original audio (for videos)</span>
-                    </label>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <Music size={24} className="mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Add background music to your post
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => document.getElementById('music-upload')?.click()}
-                    >
-                      <Plus size={16} className="mr-2" />
-                      Select Music
-                    </Button>
+              <SpotifyMusicSelector 
+                onSelectTrack={setSelectedTrack}
+                selectedTrack={selectedTrack}
+              />
+              
+              {selectedTrack && (
+                <div className="mt-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="mute-audio" 
+                      checked={muteOriginalAudio}
+                      onCheckedChange={(checked) => setMuteOriginalAudio(checked === true)}
+                    />
+                    <Label htmlFor="mute-audio">Mute original audio (for videos)</Label>
                   </div>
                 </div>
               )}
-              
-              <input
-                id="music-upload"
-                type="file"
-                accept="audio/*"
-                onChange={handleMusicChange}
-                className="hidden"
-              />
             </TabsContent>
             
             <DialogFooter>
