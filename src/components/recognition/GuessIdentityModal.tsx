@@ -51,7 +51,7 @@ const GuessIdentityModal: React.FC<GuessIdentityModalProps> = ({
       if (response.correct) {
         toast({
           title: 'Correct!',
-          description: 'You successfully guessed the user's identity',
+          description: "You successfully guessed the user's identity",
         });
       }
     } catch (error: any) {
