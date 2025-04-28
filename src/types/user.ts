@@ -1,6 +1,4 @@
 
-import { Post } from './user';
-
 export interface User {
   _id: string;
   username: string;
@@ -51,7 +49,6 @@ export interface Post {
   isAdminPost?: boolean;
   isPinned?: boolean;
   pinnedUntil?: string;
-  username?: string;
 }
 
 export interface Like {

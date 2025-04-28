@@ -31,7 +31,7 @@ const AdminPanel: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      // Modified to only pass the content parameter which is required
+      // Pass only the content string as required
       await createPost(postContent);
       setPostContent('');
       setImageUrl('');
@@ -47,18 +47,6 @@ const AdminPanel: React.FC = () => {
       });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handlePromoteToAdmin = async (userId: string) => {
-    try {
-      await updateProfile({ userId, role: 'admin' });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to promote user to admin.',
-      });
     }
   };
 

@@ -1,11 +1,10 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
   CardFooter,
 } from "@/components/ui/card"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -19,14 +18,11 @@ import {
   Volume2,
   VolumeX,
   ArrowUpCircle,
-  ArrowDownCircle,
-  Flag,
-  Eye,
-  X,
   Loader2,
+  Eye,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import {
   DropdownMenu,
@@ -82,7 +78,13 @@ interface LoadingStates {
   [key: string]: boolean;
 }
 
-interface PostCardProps {
+interface PostUpdateData {
+  content: string;
+  musicUrl?: string;
+  muteOriginalAudio?: boolean;
+}
+
+export interface PostCardProps {
   postId?: string;
   post?: Post;
   onPostDeleted?: () => void;
@@ -91,7 +93,14 @@ interface PostCardProps {
   onRefresh?: () => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onPostDeleted, onPostUpdated, onRecognitionSuccess, onRefresh }) => {
+const PostCard: React.FC<PostCardProps> = ({ 
+  postId, 
+  post: initialPost, 
+  onPostDeleted, 
+  onPostUpdated, 
+  onRecognitionSuccess, 
+  onRefresh 
+}) => {
   const [post, setPost] = useState<Post | null>(initialPost || null);
   const [isLoading, setIsLoading] = useState(!initialPost);
   const [isLiked, setIsLiked] = useState(false);
@@ -102,7 +111,6 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onPostDe
   const [isMuted, setIsMuted] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedContent, setEditedContent] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
   const [isGuessModalOpen, setIsGuessModalOpen] = useState(false);
@@ -265,23 +273,27 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onPostDe
     setLoadingStates(prev => ({ ...prev, update: true }));
     
     try {
-      const postUpdateData = {
+      const postUpdateData: PostUpdateData = {
         content: editedContent,
-        ...(selectedTrack && { musicUrl: selectedTrack.preview_url || '' }),
-        muteOriginalAudio: isMuteOriginalAudio,
       };
       
+      if (selectedTrack && selectedTrack.preview_url) {
+        postUpdateData.musicUrl = selectedTrack.preview_url;
+      }
+      
+      postUpdateData.muteOriginalAudio = isMuteOriginalAudio;
+      
       if (post) {
-        await updatePost(post._id, postUpdateData);
+        await updatePost(post._id, JSON.stringify(postUpdateData));
       } else if (postId) {
-        await updatePost(postId, postUpdateData);
+        await updatePost(postId, JSON.stringify(postUpdateData));
       }
       
       // Update local state
       setPost(prev => prev ? {
         ...prev,
         content: editedContent,
-        ...(selectedTrack && { musicUrl: selectedTrack.preview_url || '' }),
+        ...(selectedTrack && selectedTrack.preview_url ? { musicUrl: selectedTrack.preview_url } : {}),
         muteOriginalAudio: isMuteOriginalAudio,
       } : null);
       
@@ -391,6 +403,7 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onPostDe
                 size="sm"
                 className="text-purple-600 hover:text-purple-800 hover:bg-purple-100"
                 onClick={() => setIsGuessModalOpen(true)}
+                title="Guess identity"
               >
                 <Eye size={18} />
                 <span className="sr-only">Recognize</span>
@@ -691,11 +704,11 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onPostDe
           onOpenChange={setIsGuessModalOpen}
           targetUser={{
             _id: typeof post.user === 'string' ? post.user : post.user._id,
-            username: post.username || '',
+            username: "",
             anonymousAlias: post.anonymousAlias || 'Anonymous',
             email: '',
             fullName: '',
-            avatarEmoji: post.avatarEmoji || '🎭',  // Add the required avatarEmoji property
+            avatarEmoji: post.avatarEmoji || '🎭',
           }}
           onSuccess={handleRecognitionSuccess}
         />
