@@ -1,7 +1,8 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, registerUser, getUserProfile, updateUserProfile } from '@/lib/api';
+import { loginUser, registerUser, getMe, updateProfile } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { User } from '@/types/user';
 
@@ -29,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const userData = await getUserProfile();
+          const userData = await getMe();
           setUser(userData);
           setIsAdmin(userData.role === 'admin');
         } catch (error) {
@@ -49,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      const data = await loginUser(email, password);
+      const data = await loginUser({ email, password });
       
       localStorage.setItem('token', data.token);
       setUser(data);
@@ -77,7 +78,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       console.log('Registering user with data:', { username, fullName, email, referralCode });
-      const data = await registerUser(username, fullName, email, password, referralCode);
+      const userData = { username, fullName, email, password, referralCode };
+      const data = await registerUser(userData);
       console.log('Registration successful, data received:', data);
 
       localStorage.setItem('token', data.token);
@@ -116,10 +118,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const updateProfile = async (userData: Partial<User>) => {
+  const updateUserProfile = async (userData: Partial<User>) => {
     try {
       setIsLoading(true);
-      const updatedUser = await updateUserProfile(userData);
+      const updatedUser = await updateProfile(userData);
       setUser(prev => (prev ? { ...prev, ...updatedUser } : null));
       toast({
         title: 'Profile updated',
@@ -160,7 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         register,
         logout,
-        updateProfile,
+        updateProfile: updateUserProfile,
       }}
     >
       {children}
