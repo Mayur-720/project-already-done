@@ -28,7 +28,10 @@ const PostDetail: React.FC = () => {
     anonymousAlias: post.anonymousAlias || 'Anonymous',
     avatarEmoji: post.avatarEmoji || '🎭',
     likes: post.likes || [],
-    comments: post.comments || [],
+    comments: post.comments?.map(comment => ({
+      ...comment,
+      replies: comment.replies || []
+    })) || [],
     createdAt: post.createdAt || new Date().toISOString(),
     updatedAt: post.updatedAt || new Date().toISOString(),
     expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),

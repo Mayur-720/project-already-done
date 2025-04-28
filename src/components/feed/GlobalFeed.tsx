@@ -1,6 +1,4 @@
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getGlobalFeed } from "@/lib/api";
@@ -82,7 +80,6 @@ const GlobalFeed = () => {
             <PostCard 
               key={post._id} 
               post={post} 
-              currentUserId={user?._id}
               onRefresh={handleRefresh}
             />
           ))}

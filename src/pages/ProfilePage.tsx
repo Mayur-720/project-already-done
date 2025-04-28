@@ -6,6 +6,7 @@ import { getUserProfile } from '@/lib/api';
 import AppShell from '@/components/layout/AppShell';
 import ProfileComponent from '@/components/user/ProfileComponent';
 import { Loader } from 'lucide-react';
+import { User } from '@/types';
 
 const ProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -39,9 +40,16 @@ const ProfilePage = () => {
     );
   }
 
+  // Ensure we have all required fields for the User type
+  const typeSafeUser: User = {
+    ...userData,
+    anonymousAlias: userData.anonymousAlias || 'Anonymous',
+    avatarEmoji: userData.avatarEmoji || '🎭',
+  };
+
   return (
     <AppShell>
-      <ProfileComponent userId={userId} user={userData} />
+      <ProfileComponent userId={userId} user={typeSafeUser} />
     </AppShell>
   );
 };

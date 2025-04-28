@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from "react";
 import {
@@ -24,16 +23,18 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { getRecognitions, revokeRecognition } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { User, Recognition } from "@/types/user";
+import { User, Recognition } from "@/types";
 import AvatarGenerator from "@/components/user/AvatarGenerator";
 import { Loader2, X } from "lucide-react";
 
 interface RecognitionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  targetUserId?: string;
+  targetAlias?: string;
 }
 
-const RecognitionModal = ({ open, onOpenChange }: RecognitionModalProps) => {
+const RecognitionModal = ({ open, onOpenChange, targetUserId, targetAlias }: RecognitionModalProps) => {
   const [activeTab, setActiveTab] = useState("recognized");
   const [filter, setFilter] = useState("all");
 
@@ -42,8 +43,8 @@ const RecognitionModal = ({ open, onOpenChange }: RecognitionModalProps) => {
     isLoading,
     refetch,
   } = useQuery<Recognition>({
-    queryKey: ["recognitions", activeTab, filter],
-    queryFn: () => getRecognitions(activeTab, filter),
+    queryKey: ["recognitions", activeTab, filter, targetUserId],
+    queryFn: () => getRecognitions(activeTab, filter, targetUserId),
     enabled: open,
   });
 
@@ -126,7 +127,9 @@ const RecognitionModal = ({ open, onOpenChange }: RecognitionModalProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Recognition Summary</DialogTitle>
+          <DialogTitle>
+            {targetAlias ? `Recognition - ${targetAlias}` : "Recognition Summary"}
+          </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (

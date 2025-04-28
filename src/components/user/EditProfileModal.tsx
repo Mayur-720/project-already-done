@@ -7,16 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Loader } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { User } from "@/types";
 
 interface EditProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialData?: User;
+  onSuccess?: () => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onOpenChange }) => {
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ 
+  open, 
+  onOpenChange, 
+  initialData,
+  onSuccess 
+}) => {
   const { user, updateProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bio, setBio] = useState(user?.bio || "");
+  const [bio, setBio] = useState(initialData?.bio || user?.bio || "");
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +32,28 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onOpenChange 
     
     try {
       await updateProfile({ bio });
-      onOpenChange(false);
-    } catch (error) {
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
+      });
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onOpenChange(false);
+      }
+    } catch (error: any) {
       console.error("Failed to update profile:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update profile. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
+  
+  const userData = initialData || user;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,7 +67,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onOpenChange 
             <Label htmlFor="anonymousAlias">Anonymous Alias</Label>
             <Input 
               id="anonymousAlias" 
-              value={user?.anonymousAlias || ""}
+              value={userData?.anonymousAlias || ""}
               disabled
               className="bg-muted"
             />
@@ -57,7 +80,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onOpenChange 
             <Label htmlFor="emojiAvatar">Emoji Avatar</Label>
             <Input 
               id="emojiAvatar" 
-              value={user?.avatarEmoji || "🎭"} 
+              value={userData?.avatarEmoji || "🎭"} 
               disabled
               className="bg-muted"
             />

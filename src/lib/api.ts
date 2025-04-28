@@ -1,363 +1,189 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import { io, Socket } from 'socket.io-client';
-import { User, Post } from '@/types/user';
-import { toast } from '@/hooks/use-toast';
+import { Post, User } from '@/types';
 
-// Create axios instance with base URL
-const API_URL = 'http://localhost:8900';
-// const API_URL = 'https://undercover-service.onrender.com';
-export const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   withCredentials: true,
 });
 
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Simple response interceptor
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      console.error('Unauthorized, please log in again', error);
-      localStorage.removeItem('token');
+  (error) => {
+    console.error('API Error:', error);
+    if (error.response) {
+      console.error('API Error Data:', error.response.data);
+      console.error('API Error Status:', error.response.status);
     }
     return Promise.reject(error);
   }
 );
 
-export const getToken = () => {
-  return localStorage.getItem('token') || '';
+export const registerUser = async (userData: any) => {
+  const response = await api.post('/users/register', userData);
+  return response.data;
 };
 
-export const initSocket = (): Socket => {
-  const token = getToken();
-  const socket = io(`${API_URL}`, {
-    auth: { token },
+export const loginUser = async (userData: any) => {
+  const response = await api.post('/users/login', userData);
+  return response.data;
+};
+
+export const logoutUser = async () => {
+  const response = await api.post('/users/logout');
+  return response.data;
+};
+
+export const getMe = async () => {
+  const response = await api.get('/users/me');
+  return response.data;
+};
+
+export const updateProfile = async (profileData: any) => {
+  const response = await api.put('/users/profile', profileData);
+  return response.data;
+};
+
+export const uploadProfilePicture = async (formData: FormData) => {
+  const response = await api.post('/users/profile/picture', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
   });
-  socket.on('connect_error', (err) => {
-    console.error('Socket.IO connection error:', err.message);
-  });
-  return socket;
+  return response.data;
 };
 
-export const loginUser = async (email: string, password: string): Promise<User & { token: string }> => {
-  try {
-    const response = await api.post('/api/users/login', { email, password });
+export const createPost = async (postData: any) => {
+  const response = await api.post('/posts', postData);
+  return response.data;
+};
+
+export const getGlobalFeed = async () => {
+  const response = await api.get('/posts/global');
+  return response.data;
+};
+
+export const getUserProfile = async (userId: string) => {
+  const response = await api.get(`/users/profile/${userId}`);
+  return response.data;
+};
+
+export const getUserPosts = async (userId: string) => {
+  const response = await api.get(`/users/${userId}/posts`);
+  return response.data;
+};
+
+export const addFriend = async (username: string) => {
+    const response = await api.post('/users/add-friend', { username });
     return response.data;
-  } catch (error) {
-    console.error('Login failed:', error);
-    throw error;
-  }
 };
 
-export const getPostById = async (postId: string): Promise<Post> => {
-  const response = await api.get(`/api/posts/${postId}`);
+export const searchUsers = async (searchTerm: string) => {
+  const response = await api.get(`/users/search?searchTerm=${searchTerm}`);
   return response.data;
 };
 
-export const incrementShareCount = async (postId: string): Promise<{ shareCount: number }> => {
-  const response = await api.put(`/api/posts/${postId}/share`);
+export const getGhostCircles = async () => {
+  const response = await api.get('/ghost-circles');
   return response.data;
 };
 
-export const registerUser = async (
-  username: string,
-  fullName: string,
-  email: string,
-  password: string,
-  referralCode?: string
-): Promise<User & { token: string }> => {
-  try {
-    console.log('Attempting to register user with:', { username, fullName, email, referralCode });
-    const response = await api.post('/api/users/register', {
-      username,
-      fullName,
-      email,
-      password,
-      referralCode,
-    });
-    console.log('Registration response:', response.data);
+export const createGhostCircle = async (circleData: any) => {
+  const response = await api.post('/ghost-circles', circleData);
+  return response.data;
+};
+
+export const getGhostCircle = async (circleId: string) => {
+  const response = await api.get(`/ghost-circles/${circleId}`);
+  return response.data;
+};
+
+export const updateGhostCircle = async (circleId: string, circleData: any) => {
+  const response = await api.put(`/ghost-circles/${circleId}`, circleData);
+  return response.data;
+};
+
+export const deleteGhostCircle = async (circleId: string) => {
+  const response = await api.delete(`/ghost-circles/${circleId}`);
+  return response.data;
+};
+
+export const addMemberToGhostCircle = async (circleId: string, username: string) => {
+  const response = await api.post(`/ghost-circles/${circleId}/add-member`, { username });
+  return response.data;
+};
+
+export const removeMemberFromGhostCircle = async (circleId: string, userId: string) => {
+  const response = await api.post(`/ghost-circles/${circleId}/remove-member`, { userId });
+  return response.data;
+};
+
+export const leaveGhostCircle = async (circleId: string) => {
+  const response = await api.post(`/ghost-circles/${circleId}/leave`);
+  return response.data;
+};
+
+export const getCirclePosts = async (circleId: string) => {
+  const response = await api.get(`/posts/circle/${circleId}`);
+  return response.data;
+};
+
+export const likePost = async (postId: string) => {
+  const response = await api.put(`/posts/${postId}/like`);
+  return response.data;
+};
+
+export const sendWhisper = async (recipientId: string, content: string) => {
+  const response = await api.post('/whispers', { recipient: recipientId, content });
+  return response.data;
+};
+
+export const getWhispers = async () => {
+  const response = await api.get('/whispers');
+  return response.data;
+};
+
+export const getWhisper = async (whisperId: string) => {
+    const response = await api.get(`/whispers/${whisperId}`);
     return response.data;
-  } catch (error: any) {
-    console.error('Registration error:', error.response || error);
-    throw new Error(error?.response?.data?.message || 'An error occurred during registration');
-  }
 };
 
-export const getUserProfile = async (userId?: string): Promise<User> => {
-  const endpoint = userId ? `/api/users/profile/${userId}` : '/api/users/profile';
-  const response = await api.get(endpoint);
+export const markWhisperAsRead = async (whisperId: string) => {
+  const response = await api.put(`/whispers/${whisperId}/read`);
   return response.data;
 };
 
-export const updateUserProfile = async (userData: Partial<User>): Promise<User> => {
-  const response = await api.put('/api/users/profile', userData);
+export const getNotifications = async () => {
+  const response = await api.get('/notifications');
   return response.data;
 };
 
-export const addFriend = async (friendUsername: string): Promise<User> => {
-  const response = await api.post('/api/users/friends', { friendUsername });
+export const markNotificationAsRead = async (notificationId: string) => {
+  const response = await api.put(`/notifications/${notificationId}/read`);
   return response.data;
 };
 
-export const searchUsers = async (query: string): Promise<User[]> => {
-  try {
-    if (!query || query.trim() === '') {
-      return [];
-    }
-    const response = await api.get(`/api/ghost-circles/users/search?q=${encodeURIComponent(query)}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error searching users:', error);
-    throw error;
-  }
-};
-
-// Ghost Circles API calls
-export const createGhostCircle = async (name: string, description: string): Promise<any> => {
-  const response = await api.post('/api/ghost-circles', { name, description });
+export const searchSpotifyTracks = async (query: string) => {
+  const response = await api.get(`/spotify/search?query=${query}`);
   return response.data;
 };
 
-export const getMyGhostCircles = async (): Promise<any[]> => {
-  const response = await api.get('/api/ghost-circles');
+// Recognition functions
+export const recognizePostAuthor = async (postId: string, guessUsername: string) => {
+  const response = await api.post(`/posts/${postId}/recognize`, { guessUsername });
   return response.data;
 };
 
-export const inviteToGhostCircle = async (circleId: string, friendUsername: string): Promise<any> => {
-  const response = await api.post(`/api/ghost-circles/${circleId}/invite`, { friendUsername });
-  return response.data;
-};
-
-export const getGhostCirclePosts = async (circleId: string): Promise<Post[]> => {
-  const response = await api.get(`/api/posts/circle/${circleId}`);
-  return response.data;
-};
-
-export const createPost = async (
-  content: string, 
-  media?: Array<{type: 'image' | 'video', url: string}>, 
-  musicUrl?: string,
-  muteOriginalAudio?: boolean,
-  ghostCircleId?: string, 
-  imageUrl?: string, 
-  videoUrl?: string
-): Promise<Post> => {
-  try {
-    const postData = {
-      content,
-      ...(media && { media }),
-      ...(musicUrl && { musicUrl }),
-      ...(muteOriginalAudio !== undefined && { muteOriginalAudio }),
-      ...(ghostCircleId && { ghostCircleId }),
-      ...(imageUrl && { imageUrl }),
-      ...(videoUrl && { videoUrl })
-    };
-    const response = await api.post('/api/posts', postData);
-    return response.data;
-  } catch (error: any) {
-    console.error('Error creating post:', error);
-    throw error?.response?.data || error;
-  }
-};
-
-export const updatePost = async (
-  postId: string, 
-  content: string, 
-  media?: Array<{type: 'image' | 'video', url: string}>,
-  musicUrl?: string,
-  muteOriginalAudio?: boolean,
-  imageUrl?: string, 
-  videoUrl?: string
-): Promise<Post> => {
-  const postData: any = { content };
+export const getRecognitions = async (type: string = 'recognized', filter: string = 'all', userId?: string) => {
+  const queryParams = new URLSearchParams();
+  if (type) queryParams.append('type', type);
+  if (filter) queryParams.append('filter', filter);
+  if (userId) queryParams.append('userId', userId);
   
-  if (media !== undefined) {
-    postData.media = media;
-  }
-  
-  if (musicUrl !== undefined) {
-    postData.musicUrl = musicUrl;
-  }
-  
-  if (muteOriginalAudio !== undefined) {
-    postData.muteOriginalAudio = muteOriginalAudio;
-  }
-  
-  if (imageUrl !== undefined) {
-    postData.imageUrl = imageUrl;
-  }
-  
-  if (videoUrl !== undefined) {
-    postData.videoUrl = videoUrl;
-  }
-  
-  const response = await api.put(`/api/posts/${postId}`, postData);
+  const response = await api.get(`/users/recognitions?${queryParams.toString()}`);
   return response.data;
 };
 
-export const deletePost = async (postId: string): Promise<void> => {
-  await api.delete(`/api/posts/delete/${postId}`);
-};
-
-export const getUserPosts = async (userId: string): Promise<Post[]> => {
-  try {
-    const response = await api.get(`/api/users/userposts/${userId}`);
-    const posts = response.data;
-    return posts.filter((post: Post) => !post.ghostCircle);
-  } catch (error) {
-    console.error('Error fetching user posts:', error);
-    throw error;
-  }
-};
-
-export const getGlobalFeed = async (): Promise<Post[]> => {
-  try {
-    const response = await api.get('/api/posts/global');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching global feed:', error);
-    return [];
-  }
-};
-
-export const likePost = async (postId: string): Promise<Post> => {
-  const response = await api.put(`/api/posts/${postId}/like`);
+export const revokeRecognition = async (userId: string) => {
+  const response = await api.post(`/users/revoke-recognition`, { userId });
   return response.data;
-};
-
-// Comments API calls
-export const addComment = async (postId: string, content: string, anonymousAlias: string): Promise<any> => {
-  const response = await api.post(`/api/posts/${postId}/comments`, { content, anonymousAlias });
-  return response.data;
-};
-
-export const editComment = async (postId: string, commentId: string, content: string): Promise<any> => {
-  const response = await api.put(`/api/posts/${postId}/comments/${commentId}`, { content });
-  return response.data;
-};
-
-export const deleteComment = async (postId: string, commentId: string): Promise<void> => {
-  await api.delete(`/api/posts/${postId}/comments/${commentId}`);
-};
-
-export const replyToComment = async (postId: string, commentId: string, content: string, anonymousAlias: string): Promise<any> => {
-  const response = await api.post(`/api/posts/${postId}/comments/${commentId}/reply`, { content, anonymousAlias });
-  return response.data;
-};
-
-export const getComments = async (postId: string): Promise<any[]> => {
-  try {
-    const response = await api.get(`/api/posts/${postId}/comments`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    return [];
-  }
-};
-
-// Whispers API calls
-export const sendWhisper = async (receiverId: string, content: string): Promise<any> => {
-  try {
-    const response = await api.post('/api/whispers', { receiverId, content });
-    return response.data;
-  } catch (error) {
-    console.error('Error sending whisper:', error);
-    throw error?.response?.data || error;
-  }
-};
-
-export const getMyWhispers = async (): Promise<any[]> => {
-  try {
-    const response = await api.get('/api/whispers');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching whispers:', error);
-    return []; 
-  }
-};
-
-export const markWhisperAsRead = async (whisperId: string): Promise<any> => {
-  try {
-    const response = await api.put(`/api/whispers/${whisperId}/read`);
-    return response.data;
-  } catch (error) {
-    console.error('Error marking whisper as read:', error);
-    throw error?.response?.data || error;
-  }
-};
-
-// Add new function to join a circle from an invitation
-export const joinGhostCircle = async (circleId: string): Promise<any> => {
-  const response = await api.post(`/api/ghost-circles/${circleId}/join`);
-  return response.data;
-};
-
-// Get circle details by ID
-export const getGhostCircleById = async (circleId: string): Promise<any> => {
-  const response = await api.get(`/api/ghost-circles/${circleId}`);
-  return response.data;
-};
-
-// Add new recognition API calls
-export const recognizeUser = async (targetUserId: string, guessedIdentity: string): Promise<any> => {
-  try {
-    const response = await api.post('/api/users/recognize', { targetUserId, guessedIdentity });
-    return response.data;
-  } catch (error: any) {
-    console.error('Error recognizing user:', error);
-    throw error?.response?.data || error;
-  }
-};
-
-export const getRecognitions = async (type = 'all', filter = 'all'): Promise<any> => {
-  try {
-    const response = await api.get(`/api/users/recognitions?type=${type}&filter=${filter}`);
-    return response.data;
-  } catch (error: any) {
-    console.error('Error fetching recognitions:', error);
-    throw error?.response?.data || error;
-  }
-};
-
-export const revokeRecognition = async (targetUserId: string): Promise<any> => {
-  try {
-    const response = await api.post('/api/users/revoke-recognition', { targetUserId });
-    return response.data;
-  } catch (error: any) {
-    console.error('Error revoking recognition:', error);
-    throw error?.response?.data || error;
-  }
-};
-
-export const getWhisperConversation = async (partnerId: string): Promise<{
-  messages: any[];
-  partner: {
-    _id: string;
-    anonymousAlias: string;
-    avatarEmoji: string;
-    username?: string;
-  };
-  hasRecognized: boolean;
-}> => {
-  try {
-    const response = await api.get(`/api/whispers/${partnerId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching whisper conversation:', error);
-    throw error;
-  }
 };

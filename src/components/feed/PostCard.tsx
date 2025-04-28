@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button";
 
 interface MediaCarouselProps {
   media: Array<{type: 'image' | 'video', url: string}>;
@@ -36,12 +37,10 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize video refs array
   useEffect(() => {
     videoRefs.current = videoRefs.current.slice(0, media.length);
   }, [media.length]);
 
-  // Autoplay videos when they become active
   useEffect(() => {
     const currentMedia = media[currentIndex];
     if (currentMedia?.type === 'video') {
@@ -56,7 +55,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
       }
     }
 
-    // Handle background music
     if (musicUrl && audioRef.current) {
       if (isPlaying) {
         audioRef.current.play().catch(error => console.error('Error playing audio:', error));
@@ -90,7 +88,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
 
   return (
     <div className="relative w-full">
-      {/* Media display */}
       <div className="relative overflow-hidden w-full rounded-lg aspect-square">
         {media.map((item, index) => (
           <div 
@@ -119,7 +116,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
           </div>
         ))}
 
-        {/* Play/pause overlay for videos */}
         {media[currentIndex]?.type === 'video' && (
           <div 
             className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
@@ -137,7 +133,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
           </div>
         )}
 
-        {/* Background music */}
         {musicUrl && (
           <audio
             ref={audioRef}
@@ -147,7 +142,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
           />
         )}
 
-        {/* Navigation arrows if more than one media item */}
         {media.length > 1 && (
           <>
             <button 
@@ -165,7 +159,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
           </>
         )}
 
-        {/* Pagination indicators */}
         {media.length > 1 && (
           <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-20">
             {media.map((_, index) => (
@@ -179,7 +172,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
           </div>
         )}
 
-        {/* Media controls */}
         <div className="absolute bottom-4 right-4 flex gap-2 z-20">
           {musicUrl && (
             <button
@@ -208,7 +200,6 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, musicUrl, muteOrig
   );
 };
 
-// Main PostCard component
 const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -249,47 +240,43 @@ const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
     }
   };
 
-  const { mutate: like, isLoading: isLikeLoading } = useMutation(
-    () => likePost(post._id),
-    {
-      onSuccess: (data) => {
-        queryClient.invalidateQueries(['posts']);
-        queryClient.invalidateQueries(['post', post._id]);
-        toast({
-          title: 'Post liked',
-          description: 'You have liked this post',
-        });
-      },
-      onError: (error: any) => {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.message || 'Failed to like post. Please try again.',
-        });
-      },
-    }
-  );
+  const { mutate: like, isPending: isLikeLoading } = useMutation({
+    mutationFn: () => likePost(post._id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['post', post._id] });
+      toast({
+        title: 'Post liked',
+        description: 'You have liked this post',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to like post. Please try again.',
+      });
+    },
+  });
 
-  const { mutate: share, isLoading: isShareLoading } = useMutation(
-    () => incrementShareCount(post._id),
-    {
-      onSuccess: (data) => {
-        queryClient.invalidateQueries(['posts']);
-        queryClient.invalidateQueries(['post', post._id]);
-        toast({
-          title: 'Post shared',
-          description: 'You have shared this post',
-        });
-      },
-      onError: (error: any) => {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.message || 'Failed to share post. Please try again.',
-        });
-      },
-    }
-  );
+  const { mutate: share, isPending: isShareLoading } = useMutation({
+    mutationFn: () => incrementShareCount(post._id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['post', post._id] });
+      toast({
+        title: 'Post shared',
+        description: 'You have shared this post',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to share post. Please try again.',
+      });
+    },
+  });
 
   const handleViewPost = () => {
     navigate(`/post/${post._id}`);
@@ -297,7 +284,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
 
   const isOwnPost = typeof post.user === 'object' && user?._id === post.user._id;
 
-  // Modify the render method to use our new MediaCarousel component
   return (
     <div className="bg-card rounded-lg shadow-md overflow-hidden">
       <div className="flex items-center justify-between p-4">
@@ -339,85 +325,82 @@ const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
         </DropdownMenu>
       </div>
 
-    {/* Replace media rendering with our new carousel */}
-    {post.media && post.media.length > 0 ? (
-      <div className="mb-4">
-        <MediaCarousel 
-          media={post.media} 
-          musicUrl={post.musicUrl} 
-          muteOriginalAudio={post.muteOriginalAudio}
-        />
-      </div>
-    ) : post.imageUrl ? (
-      <div className="mb-4">
-        <img
-          src={post.imageUrl}
-          alt="Post"
-          className="w-full h-auto rounded-lg"
-        />
-        {post.musicUrl && (
-          <audio 
-            src={post.musicUrl} 
-            autoPlay 
-            loop 
-            className="hidden"
+      {post.media && post.media.length > 0 ? (
+        <div className="mb-4">
+          <MediaCarousel 
+            media={post.media} 
+            musicUrl={post.musicUrl} 
+            muteOriginalAudio={post.muteOriginalAudio}
           />
-        )}
-      </div>
-    ) : post.videoUrl ? (
-      <div className="mb-4 relative">
-        <video
-          ref={videoRef}
-          src={post.videoUrl}
-          className="w-full h-auto rounded-lg"
-          loop
-          playsInline
-          muted={isMuted}
-          onClick={togglePlayPause}
-          autoPlay
-        />
-        
-        {/* Play/pause overlay for videos */}
-        <div 
-          className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
-            isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'
-          }`}
-        >
-          <div className="rounded-full bg-black bg-opacity-50 p-3">
-            {isPlaying ? (
-              <Pause className="h-10 w-10 text-white" />
-            ) : (
-              <Play className="h-10 w-10 text-white" />
+        </div>
+      ) : post.imageUrl ? (
+        <div className="mb-4">
+          <img
+            src={post.imageUrl}
+            alt="Post"
+            className="w-full h-auto rounded-lg"
+          />
+          {post.musicUrl && (
+            <audio 
+              src={post.musicUrl} 
+              autoPlay 
+              loop 
+              className="hidden"
+            />
+          )}
+        </div>
+      ) : post.videoUrl ? (
+        <div className="mb-4 relative">
+          <video
+            ref={videoRef}
+            src={post.videoUrl}
+            className="w-full h-auto rounded-lg"
+            loop
+            playsInline
+            muted={isMuted}
+            onClick={togglePlayPause}
+            autoPlay
+          />
+          
+          <div 
+            className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 transition-opacity duration-300 ${
+              isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'
+            }`}
+          >
+            <div className="rounded-full bg-black bg-opacity-50 p-3">
+              {isPlaying ? (
+                <Pause className="h-10 w-10 text-white" />
+              ) : (
+                <Play className="h-10 w-10 text-white" />
+              )}
+            </div>
+          </div>
+
+          {post.musicUrl && (
+            <audio 
+              ref={audioRef}
+              src={post.musicUrl} 
+              loop 
+              className="hidden"
+            />
+          )}
+          
+          <div className="absolute bottom-4 right-4 flex gap-2">
+            {post.videoUrl && (
+              <button
+                className="bg-black bg-opacity-50 rounded-full p-2"
+                onClick={toggleMute}
+              >
+                {isMuted ? (
+                  <VolumeX className="h-4 w-4 text-white" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-white" />
+                )}
+              </button>
             )}
           </div>
         </div>
-
-        {post.musicUrl && (
-          <audio 
-            ref={audioRef}
-            src={post.musicUrl} 
-            loop 
-            className="hidden"
-          />
-        )}
-        
-        {/* Video controls */}
-        <div className="absolute bottom-4 right-4 flex gap-2">
-          {post.videoUrl && (
-            <button
-              className="bg-black bg-opacity-50 rounded-full p-2"
-              onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-            >
-              {isMuted ? (
-                <VolumeX className="h-4 w-4 text-white" />
-              ) : (
-                <Volume2 className="h-4 w-4 text-white" />
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    ) : null}
+      ) : null}
 
       <div className="p-4">
         {post.content && <p className="mb-4">{post.content}</p>}
@@ -432,7 +415,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
               disabled={isLikeLoading}
               className="hover:text-primary transition-colors"
             >
-              <Heart className="h-5 w-5" fill={post.likes?.some((like) => typeof like.user === 'string' ? like.user === user?._id : like.user._id === user?._id) ? 'currentColor' : 'none'} />
+              <Heart className="h-5 w-5" fill={post.likes?.some((like) => typeof like.user === 'string' ? like.user === user?._id : like.user && typeof like.user === 'object' ? like.user._id === user?._id : false) ? 'currentColor' : 'none'} />
             </button>
             <span>{post.likes?.length || 0}</span>
           </div>
@@ -478,7 +461,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onRefresh }) => {
       <GuessIdentityModal
         open={isGuessIdentityOpen}
         onOpenChange={setIsGuessIdentityOpen}
-        postId={post._id}
+        targetPostId={post._id}
       />
     </div>
   );

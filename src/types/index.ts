@@ -1,4 +1,3 @@
-
 export interface User {
   _id: string;
   username: string;
@@ -23,6 +22,7 @@ export interface User {
   profilePicture?: string;
   verified?: boolean;
   rewardPoints?: number;
+  isAdmin?: boolean;
   claimedRewards?: {
     tierLevel: number;
     rewardType: string;
@@ -54,7 +54,7 @@ export interface Post {
     content: string;
     anonymousAlias: string;
     avatarEmoji: string;
-    replies: {
+    replies?: {
       _id: string;
       user: string | User;
       content: string;
@@ -114,6 +114,18 @@ export interface Notification {
   updatedAt: string;
 }
 
+export interface Recognition {
+  recognized?: User[];
+  recognizers?: User[];
+  stats: {
+    totalRecognized: number;
+    totalRecognizers: number;
+    recognitionRate: number;
+    recognitionAttempts: number;
+    successfulRecognitions: number;
+  };
+}
+
 export interface SpotifyTrack {
   id: string;
   name: string;
@@ -122,14 +134,4 @@ export interface SpotifyTrack {
   album_image?: string;
   preview_url?: string;
   duration_ms: number;
-}
-
-export interface Recognition {
-  userId: string;
-  username?: string;
-  fullName?: string;
-  anonymousAlias: string;
-  avatarEmoji: string;
-  recognizedAt: string;
-  profilePicture?: string;
 }

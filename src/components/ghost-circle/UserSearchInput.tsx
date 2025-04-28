@@ -1,122 +1,105 @@
 
-import React, { useState, useEffect, useRef } from "react";
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Loader } from "lucide-react";
-import { searchUsers } from "@/lib/api";
-
-interface User {
-  _id: string;
-  username: string;
-  avatarEmoji: string;
-  anonymousAlias: string;
-}
+import React, { useState, useEffect } from 'react';
+import { User } from '@/types';
+import { Input } from '@/components/ui/input';
+import { debounce } from 'lodash';
+import { searchUsers } from '@/lib/api';
 
 interface UserSearchInputProps {
-  onSelectUser: (username: string) => void;
+  onUserSelect: (user: User) => void;
+  placeholder?: string;
+  excludeUsers?: string[];
+  className?: string;
 }
 
-const UserSearchInput: React.FC<UserSearchInputProps> = ({ onSelectUser }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
+const UserSearchInput: React.FC<UserSearchInputProps> = ({
+  onUserSelect,
+  placeholder = 'Search users...',
+  excludeUsers = [],
+  className = '',
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showResults, setShowResults] = useState(false);
+
+  // Debounce search function to avoid excessive API calls
+  const debouncedSearch = debounce(async (term: string) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const results = await searchUsers(term);
+      // Filter out excluded users
+      const filteredResults = results.filter(
+        (user: User) => !excludeUsers.includes(user._id)
+      ) as User[];
+      // Need to use "as User[]" here to make TypeScript happy
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, 300);
 
   useEffect(() => {
-    const handleSearch = async () => {
-      if (searchTerm.length < 1) {
-        setUsers([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const results = await searchUsers(searchTerm);
-        console.log("Search results:", results);
-        setUsers(results);
-        setIsOpen(true);
-      } catch (error) {
-        console.error("Error searching users:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const debounce = setTimeout(handleSearch, 300);
-    return () => clearTimeout(debounce);
-  }, [searchTerm]);
-
-  // Handle clicks outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current && 
-        !dropdownRef.current.contains(event.target as Node) &&
-        inputRef.current && 
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
+    debouncedSearch(searchTerm);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      debouncedSearch.cancel();
     };
-  }, []);
+  }, [searchTerm, excludeUsers]);
 
-  const handleSelectUser = (username: string) => {
-    onSelectUser(username);
-    setSearchTerm(username);
-    setIsOpen(false);
+  const handleUserClick = (user: User) => {
+    onUserSelect(user);
+    setSearchTerm('');
+    setSearchResults([]);
+    setShowResults(false);
   };
 
   return (
-    <div className="relative">
-      <div className="relative">
-        <Input
-          ref={inputRef}
-          placeholder="Search users to invite..."
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onFocus={() => searchTerm && setIsOpen(true)}
-          autoComplete="off"
-        />
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        {loading && <Loader className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
-      </div>
+    <div className={`relative ${className}`}>
+      <Input
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder={placeholder}
+        onFocus={() => setShowResults(true)}
+        onBlur={() => setTimeout(() => setShowResults(false), 200)}
+      />
 
-      {isOpen && users.length > 0 && (
-        <div 
-          ref={dropdownRef}
-          className="absolute z-50 mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto"
-        >
-          <ul className="py-1">
-            {users.map((user) => (
-              <li
-                key={user._id}
-                className="px-3 py-2 hover:bg-gray-700 cursor-pointer flex items-center gap-2 text-gray-200"
-                onClick={() => handleSelectUser(user.username)}
-              >
-                <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
-                  {user.avatarEmoji}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{user.username}</p>
-                  <p className="text-xs text-gray-400">{user.anonymousAlias}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {showResults && searchResults.length > 0 && (
+        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-auto">
+          {searchResults.map((user) => (
+            <div
+              key={user._id}
+              className="px-4 py-2 hover:bg-accent cursor-pointer flex items-center"
+              onClick={() => handleUserClick(user)}
+            >
+              <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full text-lg mr-3">
+                {user.avatarEmoji || '🎭'}
+              </div>
+              <div>
+                <p className="font-medium">{user.anonymousAlias || 'Anonymous'}</p>
+                <p className="text-xs text-muted-foreground">@{user.username}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {isOpen && searchTerm && users.length === 0 && !loading && (
-        <div className="absolute z-50 mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg p-3 text-center text-gray-400">
-          No users found
+      {loading && (
+        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md p-4 text-center">
+          <p className="text-sm text-muted-foreground">Searching...</p>
+        </div>
+      )}
+
+      {showResults && searchTerm && !loading && searchResults.length === 0 && (
+        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md p-4 text-center">
+          <p className="text-sm text-muted-foreground">No users found</p>
         </div>
       )}
     </div>

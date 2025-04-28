@@ -1,120 +1,144 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { recognizeUser } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
-import { User } from "@/types/user";
-import AvatarGenerator from "@/components/user/AvatarGenerator";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { recognizePostAuthor } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { User } from '@/types';
 
 interface GuessIdentityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  targetUser: User | null;
-  onSuccess: () => void;
+  targetPostId: string;
 }
 
-const GuessIdentityModal = ({
+const GuessIdentityModal: React.FC<GuessIdentityModalProps> = ({
   open,
   onOpenChange,
-  targetUser,
-  onSuccess,
-}: GuessIdentityModalProps) => {
-  const [guessedIdentity, setGuessedIdentity] = useState("");
+  targetPostId
+}) => {
+  const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<{
+    correct: boolean;
+    message: string;
+    user?: User;
+  } | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetUser) return;
+    
+    if (!username.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a username',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    setIsSubmitting(true);
     try {
-      const result = await recognizeUser(targetUser._id, guessedIdentity);
-      
-      if (result.success) {
+      setIsSubmitting(true);
+      const response = await recognizePostAuthor(targetPostId, username);
+      setResult(response);
+      if (response.correct) {
         toast({
-          title: "Recognition successful! 🎉",
-          description: `You correctly identified ${targetUser.anonymousAlias}!`,
-        });
-        setGuessedIdentity("");
-        onSuccess();
-        onOpenChange(false);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Recognition failed",
-          description: result.message,
+          title: 'Correct!',
+          description: 'You successfully guessed the user's identity',
         });
       }
     } catch (error: any) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to submit recognition",
+        title: 'Error',
+        description: error.message || 'Failed to submit guess',
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!targetUser) return null;
+  const handleReset = () => {
+    setUsername('');
+    setResult(null);
+  };
+
+  const handleClose = () => {
+    onOpenChange(false);
+    // Short delay to reset after animation completes
+    setTimeout(() => {
+      handleReset();
+    }, 300);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Guess Identity</DialogTitle>
-          <DialogDescription>
-            Do you know who <span className="font-bold">{targetUser.anonymousAlias}</span> is? Enter their username to reveal their identity.
-          </DialogDescription>
+          <DialogTitle>Guess User Identity</DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center justify-center py-4">
-          <AvatarGenerator
-            emoji={targetUser.avatarEmoji}
-            nickname={targetUser.anonymousAlias}
-            size="lg"
-          />
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div>
+        {!result ? (
+          <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="username" className="text-sm font-medium">
+                Enter username
+              </label>
               <Input
-                placeholder="Enter username..."
-                value={guessedIdentity}
-                onChange={(e) => setGuessedIdentity(e.target.value)}
-                className="w-full"
-                autoComplete="off"
-                required
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter the real username"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Enter the real username (not the anonymous alias)
+              <p className="text-xs text-muted-foreground">
+                Try to guess who is behind this anonymous post
               </p>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Guess'}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="py-4 space-y-4">
+            <div 
+              className={`p-4 rounded-md ${
+                result.correct ? 'bg-green-100' : 'bg-red-100'
+              }`}
             >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !guessedIdentity.trim()}>
-              {isSubmitting ? "Submitting..." : "Guess Identity"}
-            </Button>
-          </DialogFooter>
-        </form>
+              <p>{result.message}</p>
+            </div>
+
+            {result.correct && result.user && (
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gradient-to-br from-purple-400 to-purple-600 rounded-full text-2xl">
+                  {result.user.avatarEmoji}
+                </div>
+                <div>
+                  <p className="font-medium">@{result.user.username}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              {!result.correct && (
+                <Button variant="outline" onClick={handleReset}>
+                  Try Again
+                </Button>
+              )}
+              <Button onClick={handleClose}>Close</Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
