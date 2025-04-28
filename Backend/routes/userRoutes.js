@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const {
@@ -33,14 +34,14 @@ router.post('/verify-payment', protect, verifyPayment);
 router.put('/profile', protect, updateUserProfile);
 router.post('/friends', protect, addFriend);
 
-// New recognition routes
+// Recognition routes
 router.post('/recognize', protect, recognizeUser);
 router.get('/recognitions', protect, getRecognitions);
 router.post('/revoke-recognition', protect, revokeRecognition);
 
-// New whisper routes
-router.post('/api/whispers', protect, sendWhisper); // Send a new whisper
-router.get('/api/whispers', protect, getMyWhispers); // Get all whispers
-router.get('/api/whispers/:userId', protect, getWhisperConversation); // Get conversation with specific user
+// Whisper routes
+router.post('/whispers', protect, sendWhisper);
+router.get('/whispers', protect, getMyWhispers);
+router.get('/whispers/:userId', protect, getWhisperConversation);
 
 module.exports = router;

@@ -1,56 +1,68 @@
 
-// types/user.ts
-import { User as IUser, Post as BasePost, GhostCircle } from './index';
+export interface User {
+  _id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  // Optional fields
+  profilePicture?: string;
+  avatarEmoji?: string;
+  anonymousAlias?: string;
+  bio?: string;
+  followers?: User[];
+  following?: User[];
+  posts?: Post[];
+  ghostCircles?: any[];
+  isAdmin?: boolean;
+  recognitionAttempts?: number;
+  successfulRecognitions?: number;
+  recognizedUsers?: { userId: string; recognizedAt: string }[];
+  identityRecognizers?: { userId: string; recognizedAt: string }[];
+  referralCode?: string;
+  referralCount?: number;
+  rewardPoints?: number;
+  referralTier?: number;
+  registrationDate?: string;
+  verified?: boolean;
+}
 
-// Re-export the User interface from index.ts
-export type User = IUser;
-
-// Create an explicit Post type that has user as string
 export interface Post {
   _id: string;
-  user: string; // This is explicitly a string ID, not a User object
+  user: string;
   content: string;
-  imageUrl?: string;
-  videoUrl?: string;
   anonymousAlias: string;
   avatarEmoji: string;
-  ghostCircle?: string;
-  likes: { user: string; anonymousAlias: string; }[];
-  comments: {
-    _id: string;
-    user: string;
-    content: string;
-    anonymousAlias: string;
-    avatarEmoji: string;
-    replies: {
-      _id: string;
-      user: string;
-      content: string;
-      anonymousAlias: string;
-      avatarEmoji: string;
-      createdAt: string;
-    }[];
-    createdAt: string;
-  }[];
-  expiresAt: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  media?: Array<{type: 'image' | 'video', url: string}>;
+  musicUrl?: string;
+  muteOriginalAudio?: boolean;
+  likes: Like[];
+  comments: Comment[];
   createdAt: string;
   updatedAt: string;
+  expiresAt: string;
   shareCount?: number;
-  unreadCount?: number;
-  userId?: string;
+  ghostCircle?: string;
+  // Additional fields
   isAdminPost?: boolean;
   isPinned?: boolean;
   pinnedUntil?: string;
+  username?: string;
 }
 
-export interface Recognition {
-  stats: {
-    recognitionRate: number;
-    totalRecognized: number;
-    totalRecognizers: number;
-    successfulRecognitions: number;
-    recognitionAttempts: number;
-  };
-  recognized?: User[];
-  recognizers?: User[];
+export interface Like {
+  user: string;
+  anonymousAlias: string;
+  createdAt?: string;
+}
+
+export interface Comment {
+  _id: string;
+  user: string;
+  anonymousAlias: string;
+  avatarEmoji: string;
+  content: string;
+  createdAt: string;
+  replies?: Comment[];
 }

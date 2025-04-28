@@ -1,4 +1,3 @@
-
 const asyncHandler = require('express-async-handler');
 const Post = require('../models/postModel');
 const User = require('../models/userModel');
@@ -11,12 +10,12 @@ const { sendPushNotification } = require('./notificationController');
 // @route   POST /api/posts
 // @access  Private
 const createPost = asyncHandler(async (req, res) => {
-  const { content, ghostCircleId, imageUrl, videoUrl, expiresIn } = req.body;
+  const { content, ghostCircleId, media, musicUrl, muteOriginalAudio, expiresIn, imageUrl, videoUrl } = req.body;
 
-  // Check if content, image, or video is provided
-  if (!content && !imageUrl && !videoUrl) {
+  // Check if content, media, or music is provided
+  if (!content && (!media || media.length === 0) && !imageUrl && !videoUrl && !musicUrl) {
     res.status(400);
-    throw new Error('Please add content, image, or video to your post');
+    throw new Error('Please add content, media, or music to your post');
   }
 
   // Calculate expiry time (default 24 hours)
@@ -27,6 +26,9 @@ const createPost = asyncHandler(async (req, res) => {
   const postData = {
     user: req.user._id,
     content: content || '',
+    media: media || [],
+    musicUrl: musicUrl || '',
+    muteOriginalAudio: muteOriginalAudio || false,
     imageUrl: imageUrl || '',
     videoUrl: videoUrl || '',
     anonymousAlias: req.user.anonymousAlias,
@@ -113,7 +115,7 @@ const deletepost = asyncHandler(async (req, res) => {
 // @route   PUT /api/posts/:id
 // @access  Private
 const updatePost = asyncHandler(async (req, res) => {
-  const { content, imageUrl, videoUrl } = req.body;
+  const { content, media, musicUrl, muteOriginalAudio, imageUrl, videoUrl } = req.body;
   const postId = req.params.id;
 
   // Find the post
@@ -132,6 +134,9 @@ const updatePost = asyncHandler(async (req, res) => {
 
   // Update post fields
   if (content !== undefined) post.content = content;
+  if (media !== undefined) post.media = media;
+  if (musicUrl !== undefined) post.musicUrl = musicUrl;
+  if (muteOriginalAudio !== undefined) post.muteOriginalAudio = muteOriginalAudio;
   if (imageUrl !== undefined) post.imageUrl = imageUrl;
   if (videoUrl !== undefined) post.videoUrl = videoUrl;
 

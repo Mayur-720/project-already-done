@@ -1,5 +1,6 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Heart,
   MessageCircle,
@@ -13,7 +14,14 @@ import {
   MousePointer2,
   Pin,
   Play,
-  Pause
+  Pause,
+  Music,
+  VolumeX,
+  Volume,
+  ArrowLeft,
+  ArrowRight,
+  Image,
+  Video
 } from 'lucide-react';
 import {
   Card,
@@ -23,7 +31,13 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +56,6 @@ import {
   replyToComment,
   incrementShareCount,
 } from '@/lib/api';
-import { useRef } from 'react'; 
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import EditPostModal from './EditPostModal';
@@ -59,6 +72,9 @@ interface Post {
   anonymousAlias: string;
   avatarEmoji: string;
   content: string;
+  media?: Array<{type: 'image' | 'video', url: string}>;
+  musicUrl?: string;
+  muteOriginalAudio?: boolean;
   imageUrl?: string;
   videoUrl?: string;
   likes: { user: string; anonymousAlias: string; }[];
@@ -89,8 +105,12 @@ const PostCard: React.FC<PostCardProps> = ({
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [showPlayPauseIcon, setShowPlayPauseIcon] = useState(false);
+  const [isMuted, setIsMuted] = useState(post.muteOriginalAudio || false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
 
   const [likeCount, setLikeCount] = useState(post.likes?.length || 0);
   const [shareCount, setShareCount] = useState(post.shareCount || 0);
@@ -110,29 +130,102 @@ const PostCard: React.FC<PostCardProps> = ({
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const [isPinned, setIsPinned] = useState(post.isPinned || false);
   const [pinDuration, setPinDuration] = useState<string>('1d');
-  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
 
   const isOwnPost = post.user === currentUserId;
   const isAdminPost = post.isAdminPost || post.anonymousAlias === 'TheAdmin';
 
+  // Get media items from post
+  const mediaItems = post.media && post.media.length > 0 
+    ? post.media 
+    : (post.imageUrl ? [{ type: 'image', url: post.imageUrl }] : [])
+      .concat(post.videoUrl ? [{ type: 'video', url: post.videoUrl }] : []);
+
+  // Check if post has multiple media items
+  const hasMultipleMedia = mediaItems.length > 1;
+  // Check if post has custom music
+  const hasCustomMusic = post.musicUrl && post.musicUrl.length > 0;
+
+  // Handle media change
+  const handleMediaChange = (index: number) => {
+    // Reset all videos to paused state
+    videoRefs.current.forEach(videoRef => {
+      if (videoRef) {
+        videoRef.pause();
+      }
+    });
+    
+    setActiveMediaIndex(index);
+    
+    // Play the new video automatically if it's a video
+    if (mediaItems[index]?.type === 'video' && videoRefs.current[index]) {
+      videoRefs.current[index]?.play();
+      setIsVideoPlaying(true);
+    }
+  };
+
+  // Handle music toggle
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    
+    if (videoRefs.current[activeMediaIndex]) {
+      videoRefs.current[activeMediaIndex].muted = !isMuted;
+    }
+  };
+
+  useEffect(() => {
+    // Initialize video refs array
+    videoRefs.current = videoRefs.current.slice(0, mediaItems.length);
+    
+    // Play first video if it exists
+    if (mediaItems.length > 0 && mediaItems[activeMediaIndex]?.type === 'video') {
+      if (videoRefs.current[activeMediaIndex]) {
+        videoRefs.current[activeMediaIndex].play();
+        setIsVideoPlaying(true);
+        
+        if (isMuted || post.muteOriginalAudio) {
+          videoRefs.current[activeMediaIndex].muted = true;
+          setIsMuted(true);
+        }
+      }
+    }
+    
+    // Initialize audio if exists
+    if (hasCustomMusic && audioRef.current) {
+      audioRef.current.volume = 0.5;
+      audioRef.current.play().catch(e => console.log('Auto-play prevented', e));
+    }
+  }, [post, activeMediaIndex]);
+
   const handleAliasClick = (userId: string, alias: string) => {
     navigate(`/profile/${userId}`, { state: { anonymousAlias: alias } });
   };
-  const handleVideoToggle = () => {
-    const video = videoRef.current;
-    if (!video) return;
+
+  const handleVideoToggle = (index: number) => {
+    const videoRef = videoRefs.current[index];
+    if (!videoRef) return;
   
-    if (video.paused) {
-      video.play();
+    if (videoRef.paused) {
+      videoRef.play();
       setIsVideoPlaying(true);
+      
+      // If there's custom music, ensure it plays too
+      if (hasCustomMusic && audioRef.current) {
+        audioRef.current.play().catch(e => console.log('Auto-play prevented', e));
+      }
     } else {
-      video.pause();
+      videoRef.pause();
       setIsVideoPlaying(false);
+      
+      // If there's custom music, pause it too
+      if (hasCustomMusic && audioRef.current) {
+        audioRef.current.pause();
+      }
     }
   
     setShowPlayPauseIcon(true);
     setTimeout(() => setShowPlayPauseIcon(false), 1000);
   };
+
   const handleLike = async () => {
     if (isLiking) return;
 
@@ -389,17 +482,11 @@ const PostCard: React.FC<PostCardProps> = ({
     identityRecognizers: [],
   };
 
-  const imageUrl = post.imageUrl
-    ? post.imageUrl.startsWith('http')
-      ? post.imageUrl
-      : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${post.imageUrl}`
-    : null;
-    
-  const videoUrl = post.videoUrl
-    ? post.videoUrl.startsWith('http')
-      ? post.videoUrl
-      : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${post.videoUrl}`
-    : null;
+  const formatMediaUrl = (url: string) => {
+    return url.startsWith('http')
+      ? url
+      : `${import.meta.env.VITE_API_URL || 'https://undercover-service.onrender.com'}${url}`;
+  };
 
   const cardClassName = `border shadow-md hover:shadow-lg transition-shadow mb-4 ${
     isAdminPost ? 'admin-post' : 'border-undercover-purple/20 bg-card'
@@ -502,51 +589,163 @@ const PostCard: React.FC<PostCardProps> = ({
         <CardContent className="p-4 pt-2">
           <p className="text-sm text-foreground mb-2">{post.content}</p>
 
-          {imageUrl && (
-            <div className="mt-3 rounded-md overflow-hidden">
-              <img
-                src={imageUrl}
-                alt="Post image"
-                className="w-full h-auto max-h-80 object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  console.error('Image failed to load:', target.src);
-                  target.onerror = null;
-                  target.src = '/placeholder.svg';
-                }}
-              />
+          {mediaItems.length > 0 && (
+            <div className="mt-3 rounded-md overflow-hidden relative">
+              {hasCustomMusic && (
+                <audio 
+                  ref={audioRef} 
+                  src={formatMediaUrl(post.musicUrl || '')} 
+                  loop 
+                  hidden 
+                />
+              )}
+              
+              {hasMultipleMedia ? (
+                <Carousel
+                  className="w-full"
+                  onValueChange={value => {
+                    const index = parseInt(value);
+                    if (!isNaN(index)) handleMediaChange(index);
+                  }}
+                >
+                  <CarouselContent>
+                    {mediaItems.map((item, index) => (
+                      <CarouselItem key={index}>
+                        {item.type === 'image' ? (
+                          <img
+                            src={formatMediaUrl(item.url)}
+                            alt={`Media ${index + 1}`}
+                            className="w-full h-auto max-h-80 object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null;
+                              target.src = '/placeholder.svg';
+                            }}
+                          />
+                        ) : (
+                          <div className="relative">
+                            <video
+                              ref={el => videoRefs.current[index] = el}
+                              src={formatMediaUrl(item.url)}
+                              autoPlay={index === activeMediaIndex}
+                              muted={isMuted}
+                              playsInline
+                              loop
+                              onClick={() => handleVideoToggle(index)}
+                              className="w-full h-auto max-h-80 object-contain cursor-pointer"
+                              controlsList="nodownload nofullscreen noremoteplayback"
+                            />
+                            {index === activeMediaIndex && showPlayPauseIcon && (
+                              <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                                {isVideoPlaying ? (
+                                  <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
+                                ) : (
+                                  <Play className="w-16 h-16 text-white/80 animate-scale-in" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <div className="absolute inset-y-0 left-0 flex items-center">
+                    <CarouselPrevious className="relative left-0 translate-x-0" />
+                  </div>
+                  <div className="absolute inset-y-0 right-0 flex items-center">
+                    <CarouselNext className="relative right-0 translate-x-0" />
+                  </div>
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+                    {mediaItems.map((_, index) => (
+                      <span
+                        key={index}
+                        className={`h-1.5 rounded-full transition-all ${
+                          index === activeMediaIndex ? "w-4 bg-white" : "w-1.5 bg-white/60"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </Carousel>
+              ) : (
+                mediaItems[0]?.type === 'image' ? (
+                  <img
+                    src={formatMediaUrl(mediaItems[0].url)}
+                    alt="Post image"
+                    className="w-full h-auto max-h-80 object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/placeholder.svg';
+                    }}
+                  />
+                ) : (
+                  <div className="relative group">
+                    <video
+                      ref={el => videoRefs.current[0] = el}
+                      src={formatMediaUrl(mediaItems[0]?.url || '')}
+                      autoPlay
+                      muted={isMuted}
+                      playsInline
+                      loop
+                      onClick={() => handleVideoToggle(0)}
+                      className="w-full h-auto max-h-80 object-contain cursor-pointer"
+                      controlsList="nodownload nofullscreen noremoteplayback"
+                    />
+                    {showPlayPauseIcon && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                        {isVideoPlaying ? (
+                          <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
+                        ) : (
+                          <Play className="w-16 h-16 text-white/80 animate-scale-in" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
+              
+              {/* Media controls */}
+              <div className="absolute bottom-3 right-3 flex gap-2">
+                {hasCustomMusic && (
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-black/50 text-white border-none hover:bg-black/70"
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (audioRef.current) {
+                        if (audioRef.current.paused) {
+                          audioRef.current.play();
+                        } else {
+                          audioRef.current.pause();
+                        }
+                      }
+                    }}
+                  >
+                    <Music size={14} />
+                  </Button>
+                )}
+                
+                {(mediaItems[activeMediaIndex]?.type === 'video' || post.videoUrl) && (
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-black/50 text-white border-none hover:bg-black/70"
+                    onClick={e => {
+                      e.stopPropagation();
+                      toggleMute();
+                    }}
+                  >
+                    {isMuted ? (
+                      <VolumeX size={14} />
+                    ) : (
+                      <Volume size={14} />
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
-          
-          {videoUrl && (
-  <div className="mt-3 rounded-md overflow-hidden relative group">
-    <video
-      ref={videoRef}
-      src={videoUrl}
-      autoPlay
-      muted
-      playsInline
-      loop
-      onClick={handleVideoToggle}
-      className="w-full h-auto max-h-80 object-contain cursor-pointer"
-      controlsList="nodownload nofullscreen noremoteplayback"
-      onError={(e) => {
-        const target = e.target as HTMLVideoElement;
-        console.error('Video failed to load:', target.src);
-      }}
-    />
-    {showPlayPauseIcon && (
-      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-        {isVideoPlaying ? (
-          <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
-        ) : (
-          <Play className="w-16 h-16 text-white/80 animate-scale-in" />
-        )}
-      </div>
-    )}
-  </div>
-)}
-
         </CardContent>
         <CardFooter className="p-4 pt-0 flex flex-col">
           <div className="flex items-center justify-between w-full gap-2">
@@ -657,6 +856,7 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
         </CardFooter>
 
+        {/* Modals */}
         {isOwnPost && (
           <>
             <EditPostModal

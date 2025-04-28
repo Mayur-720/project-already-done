@@ -1,50 +1,48 @@
-import React, { useContext, useEffect } from "react";
-import ProfileComponent from "@/components/user/ProfileComponent";
-import { Button } from "@/components/ui/button";
-import { Gift, MessageSquare, Send } from "lucide-react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getUserProfile } from '@/lib/api';
+import AppShell from '@/components/layout/AppShell';
+import ProfileComponent from '@/components/user/ProfileComponent';
+import { Loader } from 'lucide-react';
 
 const ProfilePage = () => {
-  const { userId } = useParams(); // Get userId from URL
-  const { state } = useLocation();
-  const navigate = useNavigate();
-  const { user } = useAuth(); // Get authenticated user from context
+  const { userId } = useParams<{ userId: string }>();
 
-  // Determine anonymousAlias based on userId and state
-  const anonymousAlias = userId
-    ? state?.anonymousAlias || "Unknown User" // Use state for target user
-    : user?.anonymousAlias || "Unknown User"; // Use auth user for own profile
+  const { data: userData, isLoading, error } = useQuery({
+    queryKey: ['profile', userId],
+    queryFn: () => getUserProfile(userId),
+    enabled: !!userId,
+  });
 
-  const handleWhisperClick = () => {
-    if (userId) {
-      navigate(`/chat/${userId}`);
-    }
-  };
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="flex h-full items-center justify-center">
+          <Loader className="h-12 w-12 animate-spin text-purple-500" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error || !userData) {
+    return (
+      <AppShell>
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center">
+            <h2 className="mb-2 text-xl font-bold text-red-500">Error loading profile</h2>
+            <p>Unable to fetch user data. Please try again later.</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex justify-end px-4 py-2 gap-2">
-       
-        <Button
-          variant="outline"
-          className="flex items-center gap-2 border-purple-500/30 hover:bg-purple-500/10"
-          onClick={() => navigate("/referrals")}
-        >
-          <Gift className="h-4 w-4 text-purple-400" />
-          Refer & Earn ₹100
-        </Button>
-        <Button
-          variant="outline"
-          className="flex items-center gap-2 border-purple-500/30 hover:bg-purple-500/10"
-          onClick={handleWhisperClick}
-        >
-          <Send className="h-4 w-4 text-purple-400" />
-          Whisper
-        </Button>
-      </div>
-      <ProfileComponent userId={userId} anonymousAlias={anonymousAlias} /> {/* Pass props */}
-    </div>
+    <AppShell>
+      <ProfileComponent userId={userId} user={userData} />
+    </AppShell>
   );
 };
 

@@ -36,6 +36,19 @@ const commentSchema = new mongoose.Schema({
   ]
 });
 
+// Define a media item schema for multiple photos/videos
+const mediaItemSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['image', 'video'],
+    required: true
+  },
+  url: {
+    type: String,
+    required: true
+  }
+});
+
 const postSchema = mongoose.Schema(
   {
     user: {
@@ -46,6 +59,15 @@ const postSchema = mongoose.Schema(
     content: {
       type: String,
       default: '',
+    },
+    media: [mediaItemSchema], // Array of media items (images, videos)
+    musicUrl: {
+      type: String,
+      default: '',
+    },
+    muteOriginalAudio: {
+      type: Boolean,
+      default: false,
     },
     imageUrl: {
       type: String,

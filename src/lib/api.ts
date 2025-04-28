@@ -147,10 +147,21 @@ export const getGhostCirclePosts = async (circleId: string): Promise<Post[]> => 
   return response.data;
 };
 
-export const createPost = async (content: string, ghostCircleId?: string, imageUrl?: string, videoUrl?: string): Promise<Post> => {
+export const createPost = async (
+  content: string, 
+  media?: Array<{type: 'image' | 'video', url: string}>, 
+  musicUrl?: string,
+  muteOriginalAudio?: boolean,
+  ghostCircleId?: string, 
+  imageUrl?: string, 
+  videoUrl?: string
+): Promise<Post> => {
   try {
     const postData = {
       content,
+      ...(media && { media }),
+      ...(musicUrl && { musicUrl }),
+      ...(muteOriginalAudio !== undefined && { muteOriginalAudio }),
       ...(ghostCircleId && { ghostCircleId }),
       ...(imageUrl && { imageUrl }),
       ...(videoUrl && { videoUrl })
@@ -163,8 +174,28 @@ export const createPost = async (content: string, ghostCircleId?: string, imageU
   }
 };
 
-export const updatePost = async (postId: string, content: string, imageUrl?: string, videoUrl?: string): Promise<Post> => {
-  const postData: { content: string; imageUrl?: string; videoUrl?: string } = { content };
+export const updatePost = async (
+  postId: string, 
+  content: string, 
+  media?: Array<{type: 'image' | 'video', url: string}>,
+  musicUrl?: string,
+  muteOriginalAudio?: boolean,
+  imageUrl?: string, 
+  videoUrl?: string
+): Promise<Post> => {
+  const postData: any = { content };
+  
+  if (media !== undefined) {
+    postData.media = media;
+  }
+  
+  if (musicUrl !== undefined) {
+    postData.musicUrl = musicUrl;
+  }
+  
+  if (muteOriginalAudio !== undefined) {
+    postData.muteOriginalAudio = muteOriginalAudio;
+  }
   
   if (imageUrl !== undefined) {
     postData.imageUrl = imageUrl;

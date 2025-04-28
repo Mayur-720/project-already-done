@@ -20,7 +20,7 @@ const PostDetail: React.FC = () => {
   if (error) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Error loading post</div>;
   if (!post) return <div className='text-red-500 flex flex-row min-h-screen justify-center items-center'>Post not found</div>;
 
-  // Create a compatible post object for PostCard
+  // Create a compatible post object for PostCard, safely handling the user field
   const postForCard: Post = {
     _id: post._id,
     user: post.user ? (typeof post.user === 'object' ? post.user._id : String(post.user)) : '',
@@ -34,6 +34,9 @@ const PostDetail: React.FC = () => {
     expiresAt: post.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     imageUrl: post.imageUrl,
     videoUrl: post.videoUrl,
+    media: post.media,
+    musicUrl: post.musicUrl,
+    muteOriginalAudio: post.muteOriginalAudio,
   };
 
   return (

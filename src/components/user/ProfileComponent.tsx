@@ -1,568 +1,286 @@
-import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  UserRound,
-  Settings,
-  LogOut,
-  Image,
-  Grid,
-  Edit,
-  MessageSquare,
-  Trash2,
-  Award,
-  Eye,
-  Send,
-  Plus,
-  Pin,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { getUserProfile, getUserPosts, deletePost } from "@/lib/api";
-import { Skeleton } from "@/components/ui/skeleton";
-import EditProfileModal from "./EditProfileModal";
-import EditPostModal from "./EditPostModal";
-import RecognitionModal from "@/components/recognition/RecognitionModal";
-import { toast } from "@/hooks/use-toast";
-import { User, Post } from "@/types/user";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import EditProfileModal from './EditProfileModal';
+import { addFriend, getUserPosts } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { Post, User } from '@/types/user';
+import RecognitionStats from '@/components/recognition/RecognitionStats';
+import RecognitionModal from '@/components/recognition/RecognitionModal';
+import WhisperModal from '@/components/whisper/WhisperModal';
+import { MessageSquare, Image, Video } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ProfileComponentProps {
   userId?: string;
-  anonymousAlias?: string;
+  user: User;
 }
 
-const ProfileComponent = ({
-  userId: targetUserId,
-  anonymousAlias: targetAlias,
-}: ProfileComponentProps) => {
-  const { user, logout, isAdmin } = useAuth();
+const ProfileComponent: React.FC<ProfileComponentProps> = ({ userId, user }) => {
+  const { user: authUser } = useAuth();
   const navigate = useNavigate();
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [recognitionModalOpen, setRecognitionModalOpen] = useState(false);
-  const [editPostModalOpen, setEditPostModalOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isRecognizeModalOpen, setIsRecognizeModalOpen] = useState(false);
+  const [isWhisperModalOpen, setIsWhisperModalOpen] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [loadingAction, setLoadingAction] = useState(false);
 
-  const isOwnProfile = !targetUserId || targetUserId === user?._id;
-  const currentUserId = isOwnProfile ? user?._id : targetUserId;
+  const isOwnProfile = !userId || userId === authUser?._id;
+  const displayUser = isOwnProfile ? authUser : user;
 
-  const {
-    data: profileData,
-    isLoading: profileLoading,
-    refetch: refetchProfile,
-  } = useQuery<User>({
-    queryKey: ["userProfile", targetUserId || user?._id],
-    queryFn: () => getUserProfile(currentUserId!),
-    enabled: !!currentUserId,
-    meta: {
-      onError: () => {
-        toast({
-          variant: "destructive",
-          title: "Failed to load profile",
-          description: "Could not retrieve profile information.",
-        });
-      },
-    },
-  });
+  const handleFriendRequest = async () => {
+    if (!displayUser || !displayUser.username) return;
 
-  const {
-    data: userPosts,
-    isLoading: postsLoading,
-    refetch,
-  } = useQuery<Post[]>({
-    queryKey: ["userPosts", currentUserId],
-    queryFn: () => getUserPosts(currentUserId!),
-    enabled: !!currentUserId,
-    meta: {
-      onError: () => {
-        toast({
-          variant: "destructive",
-          title: "Failed to load posts",
-          description: "Could not retrieve posts.",
-        });
-      },
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deletePost,
-    onSuccess: () => {
-      toast({ title: "Post deleted", description: "Your post has been successfully deleted." });
-      refetch();
-    },
-    onError: () => {
-      toast({ variant: "destructive", title: "Failed to delete post", description: "Please try again later." });
-    },
-  });
-
-  // const pinMutation = useMutation({
-  //   mutationFn: (data: { postId: string; duration: string }) => pinPost(data.postId, data.duration),
-  //   onSuccess: () => {
-  //     toast({ title: "Post pinned", description: "This post has been pinned successfully." });
-  //     refetch();
-  //   },
-  //   onError: () => {
-  //     toast({ variant: "destructive", title: "Failed to pin post", description: "Please try again." });
-  //   },
-  // });
-
-  // const unpinMutation = useMutation({
-  //   mutationFn: (postId: string) => unpinPost(postId),
-  //   onSuccess: () => {
-  //     toast({ title: "Post unpinned", description: "This post is no longer pinned." });
-  //     refetch();
-  //   },
-  //   onError: () => {
-  //     toast({ variant: "destructive", title: "Failed to unpin post", description: "Please try again." });
-  //   },
-  // });
-
-  const handleDeletePost = (postId: string) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
-      deleteMutation.mutate(postId);
-    }
-  };
-
-  const handleWhisperClick = () => {
-    if (targetUserId && targetUserId !== user?._id) {
-      navigate(`/chat/${targetUserId}`);
-    } else {
+    try {
+      setLoadingAction(true);
+      await addFriend(displayUser.username);
       toast({
-        variant: "destructive",
-        title: "Cannot Whisper",
-        description: "You cannot whisper to yourself!",
+        title: 'Friend request sent',
+        description: `A friend request has been sent to ${displayUser.anonymousAlias || displayUser.username}!`,
       });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to send friend request',
+      });
+    } finally {
+      setLoadingAction(false);
     }
   };
 
-  const handleEditPost = (post: Post) => {
-    setSelectedPost(post);
-    setEditPostModalOpen(true);
+  const loadUserPosts = async () => {
+    if (!userId && !authUser?._id) return;
+
+    try {
+      setIsLoadingPosts(true);
+      const fetchedPosts = await getUserPosts(userId || authUser?._id || '');
+      // Convert imported posts to format that matches our type expectations
+      const typedPosts: Post[] = fetchedPosts.map((post: any) => ({
+        ...post,
+        user: typeof post.user === 'object' ? post.user._id : post.user,
+      }));
+      setPosts(typedPosts);
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load posts. Please try again.',
+      });
+    } finally {
+      setIsLoadingPosts(false);
+    }
   };
 
-  // const handlePinPost = (postId: string, duration: string) => {
-  //   pinMutation.mutate({ postId, duration });
-  // };
+  useEffect(() => {
+    if (displayUser && (displayUser._id || displayUser.username)) {
+      loadUserPosts();
+    }
+  }, [displayUser, userId]);
 
-  // const handleUnpinPost = (postId: string) => {
-  //   unpinMutation.mutate(postId);
-  // };
-
-  const isLoading = profileLoading || postsLoading;
-
-  if (!user) return null;
-
-  const displayedAlias = isOwnProfile
-    ? profileData?.anonymousAlias || user.anonymousAlias || "Unknown User"
-    : targetAlias || profileData?.anonymousAlias || "Unknown User";
-
-  const userStats = {
-    posts: userPosts?.length || 0,
-    recognizedBy: profileData?.identityRecognizers?.length || 0,
-    recognized: profileData?.recognizedUsers?.length || 0,
-    recognitionRate:
-      profileData?.identityRecognizers?.length && profileData.recognizedUsers?.length
-        ? Math.round((profileData.recognizedUsers.length / profileData.identityRecognizers.length) * 100) || 0
-        : 0,
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    toast({
+      title: 'Profile updated',
+      description: 'Your profile has been updated successfully!',
+    });
   };
 
-  const claimedBadges = profileData?.claimedRewards?.filter(
-    (reward) => reward.rewardType === "badge" && reward.status === "completed"
-  ) || [];
+  const handleViewPost = (postId: string) => {
+    navigate(`/post/${postId}`);
+  };
+
+  if (!displayUser) {
+    return <div className="text-center p-8">User not found</div>;
+  }
+
+  const getTimeAgo = (date: string) => {
+    try {
+      return formatDistanceToNow(new Date(date), { addSuffix: true });
+    } catch {
+      return 'Unknown time';
+    }
+  };
 
   return (
-    <div className="max-w-4xl w-full mx-auto px-2 py-2 sm:px-4 sm:py-4">
-      <Card className="bg-card shadow-md border border-undercover-purple/20 mb-4">
-        <CardHeader className="p-3 sm:p-4 md:p-6 pb-0">
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-14 w-14 sm:h-16 sm:w-16 flex items-center justify-center rounded-full bg-undercover-dark text-2xl sm:text-3xl">
-                  {profileData?.avatarEmoji || user.avatarEmoji || "🎭"}
-                </div>
-                <div>
-                  <CardTitle className="text-lg sm:text-xl text-undercover-light-purple">
-                    {displayedAlias}
-                  </CardTitle>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    @{profileData?.username || user.username}
-                  </p>
-                  {claimedBadges.length > 0 && (
-                    <div className="flex gap-1 mt-1">
-                      {claimedBadges.map((reward) => (
-                        <span
-                          key={reward.tierLevel}
-                          className="text-lg"
-                          title="Shadow Recruiter Badge"
-                        >
-                          {reward.tierLevel === 1 ? "🥷" : ""}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-card rounded-lg shadow-md overflow-hidden">
+        <div className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full text-4xl">
+                {displayUser.avatarEmoji || '🎭'}
               </div>
-              {isOwnProfile && (
-                <div className="sm:hidden">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setEditProfileOpen(true)}
-                  >
-                    <Edit size={16} />
-                  </Button>
-                </div>
-              )}
+
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">
+                  {displayUser.anonymousAlias || 'Anonymous User'}
+                </h1>
+                {isOwnProfile && (
+                  <p className="text-sm text-muted-foreground">@{displayUser.username}</p>
+                )}
+              </div>
             </div>
-            <div className="hidden sm:flex gap-2">
+
+            <div className="flex flex-wrap gap-2">
               {isOwnProfile ? (
+                <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
+                  Edit Profile
+                </Button>
+              ) : (
                 <>
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => setEditProfileOpen(true)}
-                  >
-                    <Edit size={16} className="mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/whispers")}
+                    className="border-undercover-purple text-undercover-purple hover:bg-undercover-purple hover:text-white"
+                    onClick={() => setIsWhisperModalOpen(true)}
                   >
                     <MessageSquare size={16} className="mr-2" />
-                    Messages
+                    Send Whisper
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => setRecognitionModalOpen(true)}
+                    className="border-undercover-purple text-undercover-purple hover:bg-undercover-purple hover:text-white"
+                    onClick={() => setIsRecognizeModalOpen(true)}
                   >
-                    <Eye size={16} className="mr-2" />
-                    Recognitions
+                    Guess Identity
+                  </Button>
+                  <Button
+                    variant="default"
+                    className="bg-undercover-purple hover:bg-purple-700 text-white"
+                    onClick={handleFriendRequest}
+                    disabled={loadingAction}
+                  >
+                    {loadingAction ? 'Adding...' : 'Add Friend'}
                   </Button>
                 </>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleWhisperClick}
-                >
-                  <Send size={16} className="mr-2" />
-                  Whisper
-                </Button>
               )}
             </div>
-            {isOwnProfile && (
-              <div className="flex sm:hidden gap-2 mt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => navigate("/whispers")}
-                >
-                  <MessageSquare size={16} className="mr-2" />
-                  Messages
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setRecognitionModalOpen(true)}
-                >
-                  <Eye size={16} className="mr-2" />
-                  Recognitions
-                </Button>
-              </div>
-            )}
-            {!isOwnProfile && (
-              <div className="flex sm:hidden mt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={handleWhisperClick}
-                >
-                  <Send size={16} className="mr-2" />
-                  Whisper
-                </Button>
-              </div>
-            )}
           </div>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-4 md:p-6 pt-3">
-          <div className="border-t border-border my-2 sm:my-3"></div>
-          <div className="space-y-3">
-            <h3 className="text-sm sm:text-base font-medium">Your Anonymous Identity</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              {profileData?.bio || user.bio || `In Undercover, you're known as ${displayedAlias}. This identity stays consistent throughout your experience.`}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <StatsCard
-                icon={<Grid size={16} className="text-undercover-purple" />}
-                value={userStats.posts}
-                label="Posts"
-              />
-              <StatsCard
-                icon={<Eye size={16} className="text-undercover-purple" />}
-                value={userStats.recognizedBy}
-                label="Recognized by"
-                onClick={() => setRecognitionModalOpen(true)}
-                clickable
-              />
-              <StatsCard
-                icon={<Eye size={16} className="text-undercover-purple" />}
-                value={userStats.recognized}
-                label="Recognized"
-                onClick={() => setRecognitionModalOpen(true)}
-                clickable
-              />
-              <StatsCard
-                icon={<Grid size={16} className="text-undercover-purple" />}
-                value={`${userStats.recognitionRate}%`}
-                label="Recognition rate"
-              />
-            </div>
+
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold mb-2">Recognition Stats</h2>
+            <RecognitionStats user={displayUser} />
           </div>
-          {profileData?.claimedRewards?.length > 0 && (
-            <div className="mt-4 sm:mt-6">
-              <h3 className="text-sm sm:text-base font-medium flex items-center mb-2">
-                <Award size={16} className="mr-2" />
-                Your Rewards
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {profileData.claimedRewards.map((reward, index) => (
+
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold mb-4">Posts</h2>
+            {isLoadingPosts ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-2 border-undercover-purple border-t-transparent rounded-full"></div>
+              </div>
+            ) : posts.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {posts.map((post) => (
                   <div
-                    key={index}
-                    className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground p-2 bg-card/50 rounded-md hover:bg-card transition-colors"
+                    key={post._id}
+                    className="aspect-square relative overflow-hidden rounded-md cursor-pointer bg-black/10 hover:opacity-80 transition-opacity"
+                    onClick={() => handleViewPost(post._id)}
                   >
-                    <span>
-                      {reward.rewardType === "badge" ? "🥷" : reward.rewardType === "cash" ? "💰" : "⭐"}
-                    </span>
-                    <p>
-                      {reward.rewardType === "badge" ? "Shadow Recruiter Badge" : reward.rewardType === "cash" ? "₹100 Cash Reward" : "Premium Features"}{" "}
-                      - {reward.status === "completed" ? "Claimed" : "Pending"}
-                    </p>
+                    {post.media && post.media.length > 0 ? (
+                      post.media[0].type === 'image' ? (
+                        <>
+                          <img
+                            src={post.media[0].url}
+                            alt="Post"
+                            className="w-full h-full object-cover"
+                          />
+                          {post.media.length > 1 && (
+                            <div className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                              +{post.media.length - 1}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-black">
+                          <video
+                            src={post.media[0].url}
+                            className="w-full h-full object-cover"
+                            muted
+                          />
+                          <Video className="absolute text-white/80" size={24} />
+                          {post.media.length > 1 && (
+                            <div className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                              +{post.media.length - 1}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ) : post.imageUrl ? (
+                      <>
+                        <img
+                          src={post.imageUrl}
+                          alt="Post"
+                          className="w-full h-full object-cover"
+                        />
+                        <Image className="absolute text-white/80" size={24} />
+                      </>
+                    ) : post.videoUrl ? (
+                      <div className="w-full h-full flex items-center justify-center bg-black">
+                        <video
+                          src={post.videoUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                        />
+                        <Video className="absolute text-white/80" size={24} />
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                        <span className="text-gray-500 text-sm p-2 text-center line-clamp-4">
+                          {post.content}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Post info overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
+                      <div className="flex justify-between">
+                        <span>{post.likes?.length || 0} likes</span>
+                        <span>{getTimeAgo(post.createdAt)}</span>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      <Tabs defaultValue="posts" className="w-full">
-        <TabsList className="w-full grid grid-cols-2 mb-4">
-          <TabsTrigger
-            value="posts"
-            className="text-sm data-[state=active]:bg-undercover-purple data-[state=active]:text-white transition-colors"
-          >
-            <Grid size={16} className="mr-2" />
-            Posts
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="text-sm data-[state=active]:bg-undercover-purple data-[state=active]:text-white transition-colors"
-          >
-            <Settings size={16} className="mr-2" />
-            Settings
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="posts">
-          {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-32 sm:h-28 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : userPosts && userPosts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-              {userPosts.map((post) => (
-                <PostCard
-                  key={post._id}
-                  post={post}
-                  isOwnProfile={isOwnProfile}
-                  isAdmin={isAdmin}
-                  onEdit={() => handleEditPost(post)}
-                  onDelete={() => handleDeletePost(post._id)}
-                  onPin={
-                    undefined
-                  }
-                  onUnpin={undefined}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyPostsState onCreatePost={() => navigate("/")} />
-          )}
-        </TabsContent>
-        <TabsContent value="settings">
-          <Card className="shadow-sm">
-            <CardContent className="space-y-4 p-4 sm:p-6">
-              <div className="space-y-1">
-                <h4 className="text-base font-medium">Account Settings</h4>
-                <p className="text-sm text-muted-foreground">
-                  Manage your account settings and preferences.
-                </p>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {isOwnProfile ? "You haven't posted anything yet" : "This user hasn't posted anything yet"}
               </div>
-              <div className="border-t border-border my-3"></div>
-              <div className="space-y-2">
-                {isOwnProfile && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate("/profile/settings")}
-                      className="justify-start text-sm w-full hover:bg-gray-100 transition-colors py-2 px-3 rounded-md"
-                    >
-                      <Settings size={16} className="mr-2" />
-                      Account Settings
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to log out?")) logout();
-                      }}
-                      className="justify-start text-sm w-full transition-colors py-2 px-3 rounded-md"
-                    >
-                      <LogOut size={16} className="mr-2" />
-                      Logout
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      <EditProfileModal open={editProfileOpen} onOpenChange={setEditProfileOpen} />
-      <RecognitionModal open={recognitionModalOpen} onOpenChange={setRecognitionModalOpen} />
-      {selectedPost && (
-        <EditPostModal
-          open={editPostModalOpen}
-          onOpenChange={setEditPostModalOpen}
-          post={selectedPost}
-          onSuccess={() => {
-            refetch();
-            setSelectedPost(null);
-          }}
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isOwnProfile && (
+        <EditProfileModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          user={authUser}
+          onSuccess={handleEditSuccess}
         />
       )}
-    </div>
-  );
-};
 
-const StatsCard = ({ icon, value, label, onClick = () => {}, clickable = false }) => {
-  const baseClasses = "text-center p-2 border border-undercover-purple/20 rounded-md bg-undercover-dark/10";
-  const hoverClasses = clickable
-    ? "hover:cursor-pointer hover:border-undercover-purple/50 hover:bg-undercover-dark/20 hover:shadow-[0_0_15px_rgba(147,51,234,0.3)] transition-all duration-300"
-    : "";
-  return (
-    <div className={`${baseClasses} ${hoverClasses}`} onClick={clickable ? onClick : undefined}>
-      <div className="flex justify-center mb-1">{icon}</div>
-      <p className="font-bold text-sm sm:text-base">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  );
-};
+      {!isOwnProfile && (
+        <>
+          <RecognitionModal
+            open={isRecognizeModalOpen}
+            onOpenChange={setIsRecognizeModalOpen}
+            targetUser={displayUser as User}
+          />
 
-const PostCard = ({ post, isOwnProfile, isAdmin, onEdit, onDelete, onPin, onUnpin }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handlePin = (duration: string) => {
-    if (onPin) onPin(duration);
-  };
-
-  const handleUnpin = () => {
-    if (onUnpin) onUnpin();
-  };
-
-  return (
-    <div
-      className={`relative border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 ${post.isPinned ? "border-yellow-400" : ""}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {post.imageUrl ? (
-        <img src={post.imageUrl} alt="Post" className="w-full h-32 sm:h-44 object-cover" />
-      ) : (
-        <div className="p-3 h-32 sm:h-28 flex items-center justify-center">
-          <p className="text-sm line-clamp-4 overflow-hidden">{post.content || "No content"}</p>
-        </div>
-      )}
-      {(isOwnProfile || isAdmin) && (
-        <div className="absolute top-2 right-2 flex gap-1">
-          {isHovered && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="bg-white/70 hover:bg-white w-7 h-7 rounded-full"
-                onClick={() => onEdit()}
-              >
-                <Edit className="text-black h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="bg-white/70 hover:bg-white w-7 h-7 rounded-full"
-                onClick={() => onDelete()}
-              >
-                <Trash2 className="text-black h-3 w-3" />
-              </Button>
-              {isAdmin && !post.isPinned && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="bg-white/70 hover:bg-white w-7 h-7 rounded-full">
-                      <Pin className="text-black h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handlePin("24h")}>
-                      Pin for 24 hours
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handlePin("7d")}>
-                      Pin for 7 days
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handlePin("indefinite")}>
-                      Pin indefinitely
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              {isAdmin && post.isPinned && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="bg-white/70 hover:bg-white w-7 h-7 rounded-full"
-                  onClick={() => handleUnpin()}
-                >
-                  <Pin className="text-black h-3 w-3 rotate-45" />
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {post.isPinned && (
-        <div className="absolute top-2 left-2 bg-yellow-400 text-white text-xs px-2 py-1 rounded-full flex items-center">
-          <Pin size={10} className="mr-1" /> Pinned
-        </div>
+          <WhisperModal
+            open={isWhisperModalOpen}
+            onOpenChange={setIsWhisperModalOpen}
+            recipient={displayUser as User}
+          />
+        </>
       )}
     </div>
   );
 };
-
-const EmptyPostsState = ({ onCreatePost }) => (
-  <div className="text-center py-8 border border-dashed rounded-lg bg-card">
-    <Image className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-    <h3 className="text-lg font-medium mb-1">No Posts Yet</h3>
-    <p className="text-sm text-muted-foreground mb-4">Share your thoughts anonymously!</p>
-    <Button onClick={onCreatePost} className="bg-undercover-purple hover:bg-undercover-deep-purple">
-      <Plus size={16} className="mr-2" /> Create your first post
-    </Button>
-  </div>
-);
 
 export default ProfileComponent;
