@@ -5,8 +5,8 @@ import { User, Post } from '@/types/user';
 import { toast } from '@/hooks/use-toast';
 
 // Create axios instance with base URL
-// const API_URL = 'http://localhost:8900';
-const API_URL = 'https://undercover-service.onrender.com';
+const API_URL = 'http://localhost:8900';
+// const API_URL = 'https://undercover-service.onrender.com';
 export const api = axios.create({
   baseURL: API_URL,
   headers: {

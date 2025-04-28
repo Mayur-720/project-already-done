@@ -22,7 +22,7 @@ const { sendWhisper, getMyWhispers, getWhisperConversation } = require('../contr
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.post('/process-referral', processReferral);
+router.post('/process-referral', processReferral);  
 router.get('/referral-leaderboard', getReferralLeaderboard);
 
 router.post('/claim-reward', protect, claimReward);

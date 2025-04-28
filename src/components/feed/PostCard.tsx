@@ -23,12 +23,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +42,7 @@ import {
   replyToComment,
   incrementShareCount,
 } from '@/lib/api';
+import { useRef } from 'react'; 
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import EditPostModal from './EditPostModal';
@@ -55,7 +51,6 @@ import CommentItem from './CommentItem';
 import GuessIdentityModal from '@/components/recognition/GuessIdentityModal';
 import { User } from '@/types/user';
 import { useNavigate } from 'react-router-dom';
-import { Post as AppPost } from '@/types';
 
 interface Post {
   _id: string;
@@ -94,6 +89,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [showPlayPauseIcon, setShowPlayPauseIcon] = useState(false);
+
   const [likeCount, setLikeCount] = useState(post.likes?.length || 0);
   const [shareCount, setShareCount] = useState(post.shareCount || 0);
   const [guessModalOpen, setGuessModalOpen] = useState(false);
@@ -120,7 +118,21 @@ const PostCard: React.FC<PostCardProps> = ({
   const handleAliasClick = (userId: string, alias: string) => {
     navigate(`/profile/${userId}`, { state: { anonymousAlias: alias } });
   };
-
+  const handleVideoToggle = () => {
+    const video = videoRef.current;
+    if (!video) return;
+  
+    if (video.paused) {
+      video.play();
+      setIsVideoPlaying(true);
+    } else {
+      video.pause();
+      setIsVideoPlaying(false);
+    }
+  
+    setShowPlayPauseIcon(true);
+    setTimeout(() => setShowPlayPauseIcon(false), 1000);
+  };
   const handleLike = async () => {
     if (isLiking) return;
 
@@ -507,39 +519,34 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
           
           {videoUrl && (
-            <div className="mt-3 rounded-md overflow-hidden relative group">
-              <video
-                src={videoUrl}
-                autoPlay
-                muted
-                playsInline
-                loop
-                onClick={(e) => {
-                  const video = e.target as HTMLVideoElement;
-                  if (video.paused) {
-                    video.play();
-                    setIsVideoPlaying(true);
-                  } else {
-                    video.pause();
-                    setIsVideoPlaying(false);
-                  }
-                }}
-                className="w-full h-auto max-h-80 object-contain cursor-pointer"
-                controlsList="nodownload nofullscreen noremoteplayback"
-                onError={(e) => {
-                  const target = e.target as HTMLVideoElement;
-                  console.error('Video failed to load:', target.src);
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                {!isVideoPlaying ? (
-                  <Play className="w-16 h-16 text-white/80 animate-scale-in" />
-                ) : (
-                  <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
-                )}
-              </div>
-            </div>
-          )}
+  <div className="mt-3 rounded-md overflow-hidden relative group">
+    <video
+      ref={videoRef}
+      src={videoUrl}
+      autoPlay
+      muted
+      playsInline
+      loop
+      onClick={handleVideoToggle}
+      className="w-full h-auto max-h-80 object-contain cursor-pointer"
+      controlsList="nodownload nofullscreen noremoteplayback"
+      onError={(e) => {
+        const target = e.target as HTMLVideoElement;
+        console.error('Video failed to load:', target.src);
+      }}
+    />
+    {showPlayPauseIcon && (
+      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+        {isVideoPlaying ? (
+          <Pause className="w-16 h-16 text-white/80 animate-scale-in" />
+        ) : (
+          <Play className="w-16 h-16 text-white/80 animate-scale-in" />
+        )}
+      </div>
+    )}
+  </div>
+)}
+
         </CardContent>
         <CardFooter className="p-4 pt-0 flex flex-col">
           <div className="flex items-center justify-between w-full gap-2">
