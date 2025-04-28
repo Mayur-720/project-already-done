@@ -1,31 +1,10 @@
-
-import React, { useState, useEffect } from "react";
+import React from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { getRecognitions, revokeRecognition } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
-import { User, Recognition } from "@/types";
-import AvatarGenerator from "@/components/user/AvatarGenerator";
-import { Loader2, X } from "lucide-react";
+} from '@/components/ui/dialog';
 
 interface RecognitionModalProps {
   open: boolean;
@@ -34,7 +13,12 @@ interface RecognitionModalProps {
   targetAlias?: string;
 }
 
-const RecognitionModal = ({ open, onOpenChange, targetUserId, targetAlias }: RecognitionModalProps) => {
+const RecognitionModal: React.FC<RecognitionModalProps> = ({
+  open,
+  onOpenChange,
+  targetUserId,
+  targetAlias
+}) => {
   const [activeTab, setActiveTab] = useState("recognized");
   const [filter, setFilter] = useState("all");
 

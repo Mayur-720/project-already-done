@@ -1,5 +1,5 @@
-
-import React, { useState } from "react";
+import React from 'react';
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,7 +54,10 @@ const CreateGhostCircleModal: React.FC<CreateGhostCircleModalProps> = ({
   const onSubmit = async (values: z.infer<typeof circleSchema>) => {
     setIsSubmitting(true);
     try {
-      await createGhostCircle(values.name, values.description || "");
+      const result = await createGhostCircle({
+        name: values.name,
+        description: values.description || ""
+      });
       
       toast({
         title: "Ghost Circle created",

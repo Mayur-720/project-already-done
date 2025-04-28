@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useState } from 'react';
+import { getMyWhispers, getNotifications } from '@/lib/api';
 import {
   Home,
   MessageSquare,
@@ -20,7 +20,6 @@ import NotificationsDropdown from "../notification/NotificationsDropdown";
 import NotificationPromptBanner from "../notification/NotificationPromptBanner";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { getMyWhispers } from "@/lib/api";
 
 const NavItem: React.FC<{
   icon: React.ReactNode;
@@ -46,7 +45,7 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-const AppShell = ({ children }: AppShellProps) => {
+const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -95,6 +94,26 @@ const AppShell = ({ children }: AppShellProps) => {
     logout();
     navigate("/login");
   };
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const whispersData = await getMyWhispers();
+        const unreadCount = whispersData && Array.isArray(whispersData) ? 
+          whispersData.filter(w => !w.read).length : 0;
+        
+        if (whispersData && Array.isArray(whispersData)) {
+          whispersData.forEach(whisper => {
+            // Process each whisper
+          });
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    };
+
+    loadNotifications();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex">

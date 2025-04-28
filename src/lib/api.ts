@@ -1,7 +1,9 @@
+
 import axios from 'axios';
 import { Post, User } from '@/types';
 
-const api = axios.create({
+// Create and export the API instance so other modules can use it directly
+export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   withCredentials: true,
 });
@@ -87,6 +89,9 @@ export const getGhostCircles = async () => {
   return response.data;
 };
 
+// Alias for getGhostCircles for components expecting getMyGhostCircles
+export const getMyGhostCircles = getGhostCircles;
+
 export const createGhostCircle = async (circleData: any) => {
   const response = await api.post('/ghost-circles', circleData);
   return response.data;
@@ -96,6 +101,9 @@ export const getGhostCircle = async (circleId: string) => {
   const response = await api.get(`/ghost-circles/${circleId}`);
   return response.data;
 };
+
+// Alias for getGhostCircle for components expecting getGhostCircleById
+export const getGhostCircleById = getGhostCircle;
 
 export const updateGhostCircle = async (circleId: string, circleData: any) => {
   const response = await api.put(`/ghost-circles/${circleId}`, circleData);
@@ -112,6 +120,9 @@ export const addMemberToGhostCircle = async (circleId: string, username: string)
   return response.data;
 };
 
+// Alias for addMemberToGhostCircle for components expecting inviteToGhostCircle
+export const inviteToGhostCircle = addMemberToGhostCircle;
+
 export const removeMemberFromGhostCircle = async (circleId: string, userId: string) => {
   const response = await api.post(`/ghost-circles/${circleId}/remove-member`, { userId });
   return response.data;
@@ -122,7 +133,7 @@ export const leaveGhostCircle = async (circleId: string) => {
   return response.data;
 };
 
-export const getCirclePosts = async (circleId: string) => {
+export const getGhostCirclePosts = async (circleId: string) => {
   const response = await api.get(`/posts/circle/${circleId}`);
   return response.data;
 };
@@ -142,9 +153,17 @@ export const getWhispers = async () => {
   return response.data;
 };
 
+// Alias for getWhispers for components expecting getMyWhispers
+export const getMyWhispers = getWhispers;
+
 export const getWhisper = async (whisperId: string) => {
     const response = await api.get(`/whispers/${whisperId}`);
     return response.data;
+};
+
+export const getWhisperConversation = async (partnerId: string) => {
+  const response = await api.get(`/whispers/conversation/${partnerId}`);
+  return response.data;
 };
 
 export const markWhisperAsRead = async (whisperId: string) => {
@@ -186,4 +205,64 @@ export const getRecognitions = async (type: string = 'recognized', filter: strin
 export const revokeRecognition = async (userId: string) => {
   const response = await api.post(`/users/revoke-recognition`, { userId });
   return response.data;
+};
+
+// Missing functions based on error messages
+export const deletePost = async (postId: string) => {
+  const response = await api.delete(`/posts/${postId}`);
+  return response.data;
+};
+
+export const updatePost = async (
+  postId: string, 
+  content?: string, 
+  media?: Array<{type: 'image' | 'video', url: string}>,
+  musicUrl?: string, 
+  muteOriginalAudio?: boolean,
+  imageUrl?: string,
+  videoUrl?: string
+) => {
+  const response = await api.put(`/posts/${postId}`, {
+    content,
+    media,
+    musicUrl,
+    muteOriginalAudio,
+    imageUrl,
+    videoUrl
+  });
+  return response.data;
+};
+
+export const getPostById = async (postId: string) => {
+  const response = await api.get(`/posts/${postId}`);
+  return response.data;
+};
+
+export const incrementShareCount = async (postId: string) => {
+  const response = await api.put(`/posts/${postId}/share`);
+  return response.data;
+};
+
+export const joinGhostCircle = async (inviteCode: string) => {
+  const response = await api.post(`/ghost-circles/join`, { inviteCode });
+  return response.data;
+};
+
+// Socket initialization function
+export const initSocket = () => {
+  // This will be a placeholder since we don't have the actual WebSocket logic
+  // You'll need to replace this with your actual socket initialization logic
+  console.log('Socket initialization placeholder - replace with actual implementation');
+  return {
+    on: (event: string, callback: any) => {
+      console.log(`Registered listener for ${event}`);
+    },
+    emit: (event: string, data: any, callback?: any) => {
+      console.log(`Emitted ${event} with data`, data);
+      if (callback) callback({ status: 'success' });
+    },
+    disconnect: () => {
+      console.log('Socket disconnected');
+    }
+  } as any;
 };

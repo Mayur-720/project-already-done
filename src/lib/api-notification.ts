@@ -1,6 +1,6 @@
 
-import { api } from './api';
 import { Notification } from '@/types';
+import { api } from '@/lib/api';
 
 // Get user notifications
 export const getUserNotifications = async (): Promise<Notification[]> => {

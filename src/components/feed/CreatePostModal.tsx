@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,7 +32,6 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       
-      // Check if we would exceed the limit with these new files
       if (media.length + files.length > 10) {
         toast({
           title: "Too many files",
@@ -43,7 +41,6 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
         return;
       }
       
-      // Check file sizes (5MB for images, 50MB for videos)
       const maxSize = type === 'video' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
       const oversizedFiles = files.filter(file => file.size > maxSize);
       
@@ -56,7 +53,6 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
         return;
       }
       
-      // Process each file
       files.forEach(file => {
         const fileReader = new FileReader();
         fileReader.onload = (event) => {
@@ -80,9 +76,7 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
     setMedia(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     if (!content && media.length === 0) {
       toast({
         title: "Empty post",
@@ -95,9 +89,8 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
     try {
       setIsSubmitting(true);
 
-      // Upload media files to Cloudinary
       const uploadPromises = media.map(async (item) => {
-        if (!item.file) return item; // Already has a URL
+        if (!item.file) return item;
         
         const formData = new FormData();
         formData.append("file", item.file);
@@ -117,24 +110,21 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
 
       const uploadedMedia = await Promise.all(uploadPromises);
 
-      // Get music URL from selected track if available
       const musicUrl = selectedTrack?.preview_url || undefined;
 
-      // Create the post with all media and music
-      await createPost(
-        content, 
-        uploadedMedia, 
-        musicUrl, 
-        muteOriginalAudio,
-        ghostCircleId
-      );
+      await createPost({
+        content,
+        ghostCircleId,
+        media: uploadedMedia,
+        musicUrl,
+        muteOriginalAudio
+      });
 
       toast({
         title: "Post created",
         description: "Your post has been published anonymously!"
       });
       
-      // Reset the form
       setContent('');
       setMedia([]);
       setSelectedTrack(null);
@@ -142,7 +132,7 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
       onOpenChange(false);
       if (onSuccess) onSuccess();
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Create post error:', error);
       toast({
         title: "Error",

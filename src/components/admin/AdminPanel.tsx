@@ -1,5 +1,5 @@
-
-import React, { useState } from 'react';
+import React from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,8 +8,9 @@ import { useAuth } from '@/context/AuthContext';
 import { createPost } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { SendIcon } from 'lucide-react';
+import { updateProfile } from '@/lib/api';
 
-const AdminPanel = () => {
+const AdminPanel: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [postContent, setPostContent] = useState('');
@@ -45,6 +46,18 @@ const AdminPanel = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePromoteToAdmin = async (userId: string) => {
+    try {
+      await updateProfile({ userId, role: 'admin' });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to promote user to admin.',
+      });
     }
   };
 

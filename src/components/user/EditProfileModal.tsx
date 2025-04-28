@@ -1,13 +1,18 @@
-
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/hooks/use-toast";
-import { User } from "@/types";
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { User } from '@/types';
+import { updateProfile } from '@/lib/api';
+import AvatarGenerator from './AvatarGenerator';
 
 interface EditProfileModalProps {
   open: boolean;
@@ -16,110 +21,114 @@ interface EditProfileModalProps {
   onSuccess?: () => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ 
-  open, 
-  onOpenChange, 
+const EditProfileModal: React.FC<EditProfileModalProps> = ({
+  open,
+  onOpenChange,
   initialData,
-  onSuccess 
+  onSuccess
 }) => {
-  const { user, updateProfile } = useAuth();
+  const [username, setUsername] = useState(initialData?.username || '');
+  const [fullName, setFullName] = useState(initialData?.fullName || '');
+  const [bio, setBio] = useState(initialData?.bio || '');
+  const [avatarEmoji, setAvatarEmoji] = useState(initialData?.avatarEmoji || '🎭');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bio, setBio] = useState(initialData?.bio || user?.bio || "");
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (initialData) {
+      setUsername(initialData.username || '');
+      setFullName(initialData.fullName || '');
+      setBio(initialData.bio || '');
+      setAvatarEmoji(initialData.avatarEmoji || '🎭');
+    }
+  }, [initialData]);
+
+  const handleSubmit = async () => {
     setIsSubmitting(true);
-    
     try {
-      await updateProfile({ bio });
+      const updatedData: Partial<User> = {
+        username,
+        fullName,
+        bio,
+        avatarEmoji,
+      };
+      
+      await updateProfile(updatedData);
       toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully.",
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully.',
       });
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        onOpenChange(false);
-      }
+      onSuccess?.();
+      onOpenChange(false);
     } catch (error: any) {
-      console.error("Failed to update profile:", error);
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to update profile. Please try again.",
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Could not update profile. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  const userData = initialData || user;
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="anonymousAlias">Anonymous Alias</Label>
-            <Input 
-              id="anonymousAlias" 
-              value={userData?.anonymousAlias || ""}
-              disabled
-              className="bg-muted"
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="username" className="text-right text-sm font-medium leading-none text-right">
+              Username
+            </label>
+            <Input
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="col-span-3 h-10"
             />
-            <p className="text-xs text-muted-foreground">
-              Your anonymous alias cannot be changed
-            </p>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="emojiAvatar">Emoji Avatar</Label>
-            <Input 
-              id="emojiAvatar" 
-              value={userData?.avatarEmoji || "🎭"} 
-              disabled
-              className="bg-muted"
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="fullName" className="text-right text-sm font-medium leading-none text-right">
+              Full Name
+            </label>
+            <Input
+              id="fullName"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="col-span-3 h-10"
             />
-            <p className="text-xs text-muted-foreground">
-              Your emoji avatar cannot be changed
-            </p>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Input 
-              id="bio" 
-              value={bio} 
+          <div className="grid grid-cols-4 items-start gap-4">
+            <label htmlFor="bio" className="text-right text-sm font-medium leading-none text-right">
+              Bio
+            </label>
+            <Textarea
+              id="bio"
+              value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us something about yourself..."
+              className="col-span-3"
             />
           </div>
-          
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader size={16} className="mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save changes"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label className="text-right text-sm font-medium leading-none text-right">
+              Avatar
+            </label>
+            <div className="col-span-3 flex items-center space-x-4">
+              <AvatarGenerator
+                emoji={avatarEmoji}
+                nickname={username || 'Preview'}
+                onChange={setAvatarEmoji}
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="submit" onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Save changes'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

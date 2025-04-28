@@ -15,13 +15,17 @@ import { User } from '@/types';
 interface GuessIdentityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  targetPostId: string;
+  targetPostId?: string;
+  targetUser?: User;
+  onSuccess?: () => void;
 }
 
 const GuessIdentityModal: React.FC<GuessIdentityModalProps> = ({
   open,
   onOpenChange,
-  targetPostId
+  targetPostId,
+  targetUser,
+  onSuccess
 }) => {
   const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,13 +50,25 @@ const GuessIdentityModal: React.FC<GuessIdentityModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      const response = await recognizePostAuthor(targetPostId, username);
+      
+      // Handle different recognition types (post or direct user)
+      let response;
+      if (targetPostId) {
+        response = await recognizePostAuthor(targetPostId, username);
+      } else if (targetUser) {
+        // If we're guessing a user directly rather than via a post
+        response = await recognizePostAuthor(targetUser._id, username);
+      } else {
+        throw new Error('Missing target for recognition');
+      }
+      
       setResult(response);
       if (response.correct) {
         toast({
           title: 'Correct!',
           description: "You successfully guessed the user's identity",
         });
+        if (onSuccess) onSuccess();
       }
     } catch (error: any) {
       toast({
