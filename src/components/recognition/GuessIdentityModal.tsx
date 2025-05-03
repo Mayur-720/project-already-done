@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState } from 'react';
@@ -17,6 +18,7 @@ interface GuessIdentityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   targetUser: User;
+  postId: string;
   onSuccess?: () => void;
 }
 
@@ -24,6 +26,7 @@ const GuessIdentityModal: React.FC<GuessIdentityModalProps> = ({
   open,
   onOpenChange,
   targetUser,
+  postId,
   onSuccess
 }) => {
   const [guess, setGuess] = useState('');
@@ -36,20 +39,28 @@ const GuessIdentityModal: React.FC<GuessIdentityModalProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Implement the recognition logic here
-      // For now, we'll just simulate a successful recognition
-      toast({
-        title: "Success!",
-        description: "You've correctly guessed the identity!",
-      });
+      const result = await recognizePostAuthor(postId, guess.trim());
       
-      if (onSuccess) onSuccess();
-      onOpenChange(false);
+      if (result.correct) {
+        toast({
+          title: "Success!",
+          description: "You've correctly guessed the identity!",
+        });
+        
+        if (onSuccess) onSuccess();
+        onOpenChange(false);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Incorrect",
+          description: result.message || "That's not the right username.",
+        });
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Incorrect",
-        description: error.message || "That's not the right username.",
+        title: "Error",
+        description: error.message || "Something went wrong, please try again.",
       });
     } finally {
       setIsSubmitting(false);

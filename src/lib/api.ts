@@ -7,6 +7,20 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// Add an interceptor to include the auth token in every request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -14,6 +28,17 @@ api.interceptors.response.use(
     if (error.response) {
       console.error('API Error Data:', error.response.data);
       console.error('API Error Status:', error.response.status);
+      
+      // Handle token expiration or unauthorized
+      if (error.response.status === 401) {
+        console.log('Authorization failed - clearing token');
+        // Don't clear token on initial load as it prevents retries
+        // Only clear if we're in a user-initiated action
+        if (document.readyState === 'complete') {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(error);
   }
