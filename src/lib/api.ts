@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create and export the API instance so other modules can use it directly
 export const api = axios.create({
   // Use import.meta.env for Vite instead of process.env
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8900/api',
   withCredentials: true,
 });
 

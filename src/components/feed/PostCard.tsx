@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -60,12 +61,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import SpotifyMusicSelector from '../spotify/SpotifyMusicSelector';
-import { SpotifyTrack, Post } from '@/types';
+import SpotifyMusicSelector from "@/components/music/SongSelector";
+import {Post } from '@/types';
 import { AspectRatio } from '../ui/aspect-ratio';
 import AvatarGenerator from '../user/AvatarGenerator';
 import GuessIdentityModal from '../recognition/GuessIdentityModal';
 import { User } from '@/types';
+
+export interface SpotifyTrack {
+  preview_url: string | null;
+  // Add other properties as needed for your Spotify track
+}
 
 // Interface for loading states
 interface LoadingStates {
@@ -690,7 +696,8 @@ const PostCard: React.FC<PostCardProps> = ({
           
           <div className="py-4">
             <SpotifyMusicSelector
-              selectedTrack={selectedTrack}
+              onSelectSong={(song) => null}
+              selectedSong={null}
               onSelectTrack={handleTrackSelect}
             />
           </div>
