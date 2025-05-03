@@ -33,8 +33,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const saveToken = (token: string, rememberMe: boolean = true) => {
     if (rememberMe) {
       localStorage.setItem('token', token);
+      // Clear sessionStorage token to avoid conflicts
+      sessionStorage.removeItem('token');
     } else {
       sessionStorage.setItem('token', token);
+      // Clear localStorage token to avoid conflicts
+      localStorage.removeItem('token');
     }
   };
 
@@ -88,6 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: 'Login failed',
         description: error.response?.data?.message || 'Invalid email or password',
       });
+      throw error;
     } finally {
       setIsLoading(false);
     }
