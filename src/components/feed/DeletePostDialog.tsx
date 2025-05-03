@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   AlertDialog,
@@ -17,8 +16,10 @@ import { deletePost } from "@/lib/api";
 interface DeletePostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  postId: string;
-  onSuccess: () => void;
+  postId?: string;
+  onSuccess?: () => void;
+  onDelete?: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 const DeletePostDialog: React.FC<DeletePostDialogProps> = ({
@@ -26,10 +27,24 @@ const DeletePostDialog: React.FC<DeletePostDialogProps> = ({
   onOpenChange,
   postId,
   onSuccess,
+  onDelete: externalDeleteHandler,
+  isLoading: externalIsLoading,
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const isLoading = externalIsLoading !== undefined ? externalIsLoading : isDeleting;
 
   const handleDelete = async () => {
+    // If external delete handler is provided, use it
+    if (externalDeleteHandler) {
+      await externalDeleteHandler();
+      return;
+    }
+    
+    // Otherwise use the internal implementation
+    if (!postId) return;
+    
     setIsDeleting(true);
     try {
       await deletePost(postId);
@@ -38,7 +53,7 @@ const DeletePostDialog: React.FC<DeletePostDialogProps> = ({
         title: "Post deleted",
         description: "Your post has been deleted successfully",
       });
-      onSuccess();
+      if (onSuccess) onSuccess();
       onOpenChange(false);
     } catch (error) {
       toast({
@@ -61,16 +76,16 @@ const DeletePostDialog: React.FC<DeletePostDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
               handleDelete();
             }}
-            disabled={isDeleting}
+            disabled={isLoading}
             className="bg-red-600 hover:bg-red-700"
           >
-            {isDeleting ? (
+            {isLoading ? (
               <>
                 <Loader size={16} className="mr-2 animate-spin" />
                 Deleting...

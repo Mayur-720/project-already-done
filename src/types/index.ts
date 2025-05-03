@@ -65,11 +65,17 @@ export interface Post {
 export interface Comment {
   _id: string;
   user: string | User;
-  content: string;
   anonymousAlias: string;
   avatarEmoji: string;
-  replies?: Comment[];
+  content: string;
   createdAt: string;
+  replies?: Comment[];
+}
+
+export interface CommentItemProps {
+  comment: Comment;
+  postId: string;
+  onRefresh?: () => void;
 }
 
 export interface GhostCircle {

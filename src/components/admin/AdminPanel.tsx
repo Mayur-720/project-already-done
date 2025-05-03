@@ -18,6 +18,7 @@ const AdminPanel: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSong, setSelectedSong] = useState<StaticSong | null>(null);
   const [activeTab, setActiveTab] = useState('content');
+  const { toast } = useToast();
 
   if (!isAdmin) {
     return null;
