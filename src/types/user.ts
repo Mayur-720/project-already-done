@@ -1,4 +1,7 @@
 
+// Import Post from index.ts not from this same file to avoid circular reference
+import { Post } from '@/types/index';
+
 export interface User {
   _id: string;
   username: string;
@@ -25,30 +28,6 @@ export interface User {
   referralTier?: number;
   registrationDate?: string;
   verified?: boolean;
-}
-
-export interface Post {
-  _id: string;
-  user: string;
-  content: string;
-  anonymousAlias: string;
-  avatarEmoji: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  media?: Array<{type: 'image' | 'video', url: string}>;
-  musicUrl?: string;
-  muteOriginalAudio?: boolean;
-  likes: Like[];
-  comments: Comment[];
-  createdAt: string;
-  updatedAt: string;
-  expiresAt: string;
-  shareCount?: number;
-  ghostCircle?: string;
-  // Additional fields
-  isAdminPost?: boolean;
-  isPinned?: boolean;
-  pinnedUntil?: string;
 }
 
 export interface Like {

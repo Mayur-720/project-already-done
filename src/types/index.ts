@@ -126,12 +126,12 @@ export interface Recognition {
   };
 }
 
-export interface SpotifyTrack {
+// Replace SpotifyTrack with StaticSong from our staticSongs.ts file
+export interface StaticSong {
   id: string;
   name: string;
   artists: string[];
   album: string;
-  album_image?: string;
-  preview_url?: string;
-  duration_ms: number;
+  albumImage: string;
+  previewUrl: string;
 }

@@ -9,8 +9,8 @@ import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import SpotifyMusicSelector from '../spotify/SpotifyMusicSelector';
-import { SpotifyTrack } from '@/types';
+import SongSelector from '../music/SongSelector';
+import { StaticSong } from '@/lib/staticSongs';
 
 interface CreatePostModalProps {
   open: boolean;
@@ -24,7 +24,7 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [media, setMedia] = useState<Array<{type: 'image' | 'video', url: string, file?: File}>>([]);
-  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
+  const [selectedSong, setSelectedSong] = useState<StaticSong | null>(null);
   const [muteOriginalAudio, setMuteOriginalAudio] = useState(false);
   const [activeTab, setActiveTab] = useState('content');
 
@@ -110,7 +110,7 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
 
       const uploadedMedia = await Promise.all(uploadPromises);
 
-      const musicUrl = selectedTrack?.preview_url || undefined;
+      const musicUrl = selectedSong?.previewUrl || undefined;
 
       await createPost({
         content,
@@ -127,7 +127,7 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
       
       setContent('');
       setMedia([]);
-      setSelectedTrack(null);
+      setSelectedSong(null);
       setMuteOriginalAudio(false);
       onOpenChange(false);
       if (onSuccess) onSuccess();
@@ -252,12 +252,12 @@ const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: Creat
             </TabsContent>
             
             <TabsContent value="music" className="space-y-4">
-              <SpotifyMusicSelector 
-                onSelectTrack={setSelectedTrack}
-                selectedTrack={selectedTrack}
+              <SongSelector
+                onSelectSong={setSelectedSong}
+                selectedSong={selectedSong}
               />
               
-              {selectedTrack && (
+              {selectedSong && (
                 <div className="mt-4">
                   <div className="flex items-center space-x-2">
                     <Checkbox 

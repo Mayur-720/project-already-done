@@ -180,12 +180,6 @@ export const markNotificationAsRead = async (notificationId: string) => {
   return response.data;
 };
 
-export const searchSpotifyTracks = async (query: string) => {
-  const response = await api.get(`/spotify/search?query=${query}`);
-  return response.data;
-};
-
-// Recognition functions
 export const recognizePostAuthor = async (postId: string, guessUsername: string) => {
   const response = await api.post(`/posts/${postId}/recognize`, { guessUsername });
   return response.data;

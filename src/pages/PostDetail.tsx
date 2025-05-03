@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getPostById } from '@/lib/api';
 import PostCard from '@/components/feed/PostCard';
 import AppShell from '@/components/layout/AppShell';
-import { Post } from '@/types';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();

@@ -2,20 +2,22 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/context/AuthContext';
 import { createPost } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { SendIcon } from 'lucide-react';
-import { updateProfile } from '@/lib/api';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StaticSong, getRandomSong } from '@/lib/staticSongs';
+import SongSelector from '../music/SongSelector';
 
 const AdminPanel: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [postContent, setPostContent] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<StaticSong | null>(null);
+  const [activeTab, setActiveTab] = useState('content');
 
   if (!isAdmin) {
     return null;
@@ -27,17 +29,23 @@ const AdminPanel: React.FC = () => {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postContent.trim()) return;
+    if (!postContent.trim() && !selectedSong) return;
 
     try {
       setIsSubmitting(true);
-      // Pass only the content string as required
-      await createPost(postContent);
+      
+      await createPost({
+        content: postContent,
+        musicUrl: selectedSong?.previewUrl,
+        isAdminPost: true
+      });
+      
       setPostContent('');
-      setImageUrl('');
+      setSelectedSong(null);
+      
       toast({
         title: 'Post created',
-        description: 'Your post has been created successfully.',
+        description: 'Your admin post has been created successfully.',
       });
     } catch (error) {
       toast({
@@ -48,6 +56,10 @@ const AdminPanel: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const handleAddRandomSong = () => {
+    setSelectedSong(getRandomSong());
   };
 
   return (
@@ -71,20 +83,39 @@ const AdminPanel: React.FC = () => {
               <div className="border-b border-border pb-4">
                 <h3 className="font-semibold mb-2">Create Post</h3>
                 <form onSubmit={handleCreatePost} className="space-y-3">
-                  <Textarea
-                    placeholder="Write your announcement here..."
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                  <Input
-                    placeholder="Image URL (optional)"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                  />
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid grid-cols-2 mb-4">
+                      <TabsTrigger value="content">Content</TabsTrigger>
+                      <TabsTrigger value="music">Music</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="content" className="space-y-4">
+                      <Textarea
+                        placeholder="Write your announcement here..."
+                        value={postContent}
+                        onChange={(e) => setPostContent(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="music" className="space-y-4">
+                      <SongSelector
+                        onSelectSong={setSelectedSong}
+                        selectedSong={selectedSong}
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleAddRandomSong}
+                      >
+                        Add Random Song
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                  
                   <Button 
                     type="submit" 
-                    disabled={!postContent.trim() || isSubmitting}
+                    disabled={(!postContent.trim() && !selectedSong) || isSubmitting}
                     className="bg-purple-700 hover:bg-purple-800"
                   >
                     <SendIcon className="w-4 h-4 mr-2" />
