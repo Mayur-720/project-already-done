@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 
 // Create and export the API instance so other modules can use it directly
@@ -7,10 +8,15 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// Helper to get token from either localStorage or sessionStorage
+const getStoredToken = () => {
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+};
+
 // Add an interceptor to include the auth token in every request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = getStoredToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -36,6 +42,7 @@ api.interceptors.response.use(
         // Only clear if we're in a user-initiated action
         if (document.readyState === 'complete') {
           localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
           window.location.href = '/login';
         }
       }

@@ -25,20 +25,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
+  // Improved token persistence check
+  const getStoredToken = () => {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
+  };
+
+  // Function to save token with option for persistence
+  const saveToken = (token: string, rememberMe: boolean = true) => {
+    if (rememberMe) {
+      localStorage.setItem('token', token);
+    } else {
+      sessionStorage.setItem('token', token);
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
+      const token = getStoredToken();
       if (token) {
         try {
+          console.log('Attempting to fetch user profile with token...');
           const userData = await getMe();
+          console.log('User profile fetched successfully:', userData);
           setUser(userData);
           setIsAdmin(userData.role === 'admin');
         } catch (error) {
           console.error('Auth token invalid', error);
+          // Clear token from both storage options
           localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
           setUser(null);
           setIsAdmin(false);
         }
+      } else {
+        console.log('No token found in storage');
       }
       setIsLoading(false);
     };
@@ -46,13 +66,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
       setIsLoading(true);
       
       const data = await loginUser({ email, password });
       
-      localStorage.setItem('token', data.token);
+      saveToken(data.token, rememberMe);
       setUser(data);
       setIsAdmin(data.role === 'admin');
       
@@ -82,7 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await registerUser(userData);
       console.log('Registration successful, data received:', data);
 
-      localStorage.setItem('token', data.token);
+      saveToken(data.token, true);
       setUser(data);
       toast({
         title: 'Registration successful',
@@ -143,6 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = () => {
     localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     setUser(null);
     setIsAdmin(false);
     toast({

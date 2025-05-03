@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  rememberMe: z.boolean().default(true),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -27,11 +29,12 @@ const Login: React.FC = () => {
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: true,
     },
   });
 
   const onSubmit = async (data: LoginFormValues) => {
-    await login(data.email, data.password);
+    await login(data.email, data.password, data.rememberMe);
   };
 
   return (
@@ -101,6 +104,28 @@ const Login: React.FC = () => {
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="data-[state=checked]:bg-purple-500 border-purple-300"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm text-purple-300">
+                        Remember me
+                      </FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
               <Button 
                 type="submit" 
                 className="w-full bg-purple-600 hover:bg-purple-700 py-6 text-lg font-medium mt-4" 
