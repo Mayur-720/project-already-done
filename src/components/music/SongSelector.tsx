@@ -3,12 +3,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music, X } from 'lucide-react';
 import { StaticSong, getAllSongs, getRandomSong } from '@/lib/staticSongs';
-import { SpotifyTrack } from '../feed/PostCard';
 
 interface SongSelectorProps {
   onSelectSong: (song: StaticSong | null) => void;
   selectedSong: StaticSong | null;
-  onSelectTrack: (track: SpotifyTrack | null) => void;
 }
 
 const SongSelector: React.FC<SongSelectorProps> = ({ onSelectSong, selectedSong }) => {

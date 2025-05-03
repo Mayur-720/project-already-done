@@ -28,17 +28,6 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { incrementShareCount, likePost, updatePost, deletePost } from '@/lib/api';
 import { Post, User, Comment } from '@/types';
 import EditPostModal from '@/components/feed/EditPostModal';
@@ -51,6 +40,20 @@ import { StaticSong } from '@/lib/staticSongs';
 export interface PostCardProps {
   postId?: string;
   post?: Post;
+  onRefresh?: () => void;
+}
+
+// Define props interfaces that were causing errors
+interface DeletePostDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => Promise<void>;
+  isLoading: boolean;
+}
+
+interface CommentItemProps {
+  comment: Comment;
+  postId: string;
   onRefresh?: () => void;
 }
 
@@ -297,7 +300,30 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onRefres
     }
   };
 
-  const isOwnPost = post.user === user?._id;
+  // Compute author object from post
+  const postAuthor: User = {
+    _id: typeof post.user === 'string' ? post.user : post.user._id,
+    username: post.username || '',
+    anonymousAlias: post.anonymousAlias || 'Anonymous',
+    avatarEmoji: post.avatarEmoji || '😎',
+    email: '',
+    fullName: ''
+  };
+
+  const isOwnPost = typeof post.user === 'string' 
+    ? post.user === user?._id 
+    : post.user._id === user?._id;
+
+  const handleGuessSuccess = () => {
+    toast({
+      title: "Identity Revealed!",
+      description: "You've successfully recognized this user.",
+    });
+    
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
 
   const renderMediaContent = () => {
     if (post.imageUrl) {
@@ -320,27 +346,6 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onRefres
     return null;
   };
 
-  // Compute author object from post
-  const postAuthor: User = {
-    _id: post.user,
-    username: post.username || '',
-    anonymousAlias: post.anonymousAlias || 'Anonymous',
-    avatarEmoji: post.avatarEmoji || '😎',
-    email: '',
-    fullName: ''
-  };
-
-  const handleGuessSuccess = () => {
-    toast({
-      title: "Identity Revealed!",
-      description: "You've successfully recognized this user.",
-    });
-    
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
-
   return (
     <Card className="w-full mb-4 bg-gray-900/40 border-purple-800/30 text-gray-200 shadow-md overflow-hidden">
       <CardHeader className="p-4 border-b border-purple-800/20">
@@ -356,7 +361,7 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onRefres
                   {postAuthor.anonymousAlias}
                 </h3>
                 {post.recognized && (
-                  <CheckCircle className="h-4 w-4 ml-1 text-green-500" title="You've recognized this user" />
+                  <CheckCircle className="h-4 w-4 ml-1 text-green-500" aria-label="You've recognized this user" />
                 )}
               </div>
               <p className="text-xs text-gray-400">
@@ -528,12 +533,17 @@ const PostCard: React.FC<PostCardProps> = ({ postId, post: initialPost, onRefres
         </div>
       </CardFooter>
       
-      <EditPostModal 
-        open={isEditing}
-        onOpenChange={setIsEditing}
-        post={post}
-        onSubmit={handleEdit}
-      />
+      {/* Modal components */}
+      {isEditing && (
+        <EditPostModal 
+          open={isEditing}
+          onOpenChange={setIsEditing}
+          post={post}
+          onSuccess={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
       
       <DeletePostDialog
         open={showDeleteDialog}

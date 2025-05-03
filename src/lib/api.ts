@@ -205,8 +205,13 @@ export const markNotificationAsRead = async (notificationId: string) => {
   return response.data;
 };
 
-export const recognizePostAuthor = async (postId: string, guessUsername: string) => {
-  const response = await api.post(`/posts/${postId}/recognize`, { guessUsername });
+export const recognizePostAuthor = async (idParam: string, guessUsername: string) => {
+  // Determine if it's a post ID or user ID based on the context
+  const endpoint = idParam.length > 20 
+    ? `/posts/${idParam}/recognize` // it's likely a post ID
+    : `/users/${idParam}/recognize`; // it's likely a user ID
+    
+  const response = await api.post(endpoint, { guessUsername });
   return response.data;
 };
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -9,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ImageIcon, Video, X } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from '@/hooks/use-toast';
 import { updatePost } from "@/lib/api";
 import { Post } from "@/types";
 import SongSelector from "../music/SongSelector";
@@ -42,6 +43,8 @@ const EditPostModal: React.FC<EditPostModalProps> = ({
   const [selectedSong, setSelectedSong] = useState<StaticSong | null>(null);
   const [muteOriginalAudio, setMuteOriginalAudio] = useState(post?.muteOriginalAudio || false);
   const [activeTab, setActiveTab] = useState('content');
+
+  const { toast } = useToast();
 
   // If post has music, try to find a matching song from our collection
   useEffect(() => {

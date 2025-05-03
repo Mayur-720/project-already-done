@@ -1,6 +1,6 @@
 
 // Import Post from index.ts not from this same file to avoid circular reference
-import { Post } from '@/types/index';
+import type { Post } from './index';
 
 export interface User {
   _id: string;
@@ -36,12 +36,4 @@ export interface Like {
   createdAt?: string;
 }
 
-export interface Comment {
-  _id: string;
-  user: string;
-  anonymousAlias: string;
-  avatarEmoji: string;
-  content: string;
-  createdAt: string;
-  replies?: Comment[];
-}
+// Moving Comment interface to index.ts to avoid circular reference

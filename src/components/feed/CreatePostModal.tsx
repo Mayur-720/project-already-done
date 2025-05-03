@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { createPost } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Image, Music, Plus, Video, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,7 @@ interface CreatePostModalProps {
 
 const CreatePostModal = ({ open, onOpenChange, onSuccess, ghostCircleId }: CreatePostModalProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [media, setMedia] = useState<Array<{type: 'image' | 'video', url: string, file?: File}>>([]);

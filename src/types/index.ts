@@ -46,24 +46,11 @@ export interface Post {
   muteOriginalAudio?: boolean;
   anonymousAlias: string;
   avatarEmoji: string;
+  username?: string;
+  recognized?: boolean;
   ghostCircle?: string | GhostCircle;
   likes: { user: string; anonymousAlias: string }[];
-  comments: {
-    _id: string;
-    user: string | User;
-    content: string;
-    anonymousAlias: string;
-    avatarEmoji: string;
-    replies?: {
-      _id: string;
-      user: string | User;
-      content: string;
-      anonymousAlias: string;
-      avatarEmoji: string;
-      createdAt: string;
-    }[];
-    createdAt: string;
-  }[];
+  comments: Comment[];
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
@@ -73,6 +60,16 @@ export interface Post {
   isAdminPost?: boolean;
   isPinned?: boolean;
   pinnedUntil?: string;
+}
+
+export interface Comment {
+  _id: string;
+  user: string | User;
+  content: string;
+  anonymousAlias: string;
+  avatarEmoji: string;
+  replies?: Comment[];
+  createdAt: string;
 }
 
 export interface GhostCircle {

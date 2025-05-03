@@ -78,6 +78,7 @@ const UserCard = ({ user, isCurrentUser = false, onRecognitionSuccess }: UserCar
           open={guessModalOpen}
           onOpenChange={setGuessModalOpen}
           targetUser={safeUser}
+          postId={user._id} // Use the user's ID as a fallback for the postId
           onSuccess={handleRecognitionSuccess}
         />
       )}
