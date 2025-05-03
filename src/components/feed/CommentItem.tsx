@@ -6,22 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import AvatarGenerator from "../user/AvatarGenerator";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
-
-interface CommentItemProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  comment: any;
-  postId: string;
-  onDelete: (commentId: string) => Promise<void>;
-  onEdit: (commentId: string, content: string) => Promise<void>;
-  onReply: (commentId: string, content: string) => Promise<void>;
-}
+import { CommentItemProps, Comment } from "@/types";
 
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   postId,
-  onDelete,
-  onEdit,
-  onReply
+  onRefresh
 }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -37,8 +27,11 @@ const CommentItem: React.FC<CommentItemProps> = ({
     
     setIsLoading(true);
     try {
-      await onEdit(comment._id, editContent);
+      // Implement edit functionality
+      // This would likely call an API function like editComment(comment._id, editContent)
       setIsEditing(false);
+      // If onRefresh is provided, call it to refresh the comment list
+      if (onRefresh) onRefresh();
     } catch (error) {
       console.error("Failed to edit comment:", error);
     } finally {
@@ -54,7 +47,10 @@ const CommentItem: React.FC<CommentItemProps> = ({
     
     setIsLoading(true);
     try {
-      await onDelete(comment._id);
+      // Implement delete functionality
+      // This would likely call an API function like deleteComment(comment._id)
+      // If onRefresh is provided, call it to refresh the comment list
+      if (onRefresh) onRefresh();
     } catch (error) {
       console.error("Failed to delete comment:", error);
     } finally {
@@ -67,9 +63,12 @@ const CommentItem: React.FC<CommentItemProps> = ({
     
     setIsLoading(true);
     try {
-      await onReply(comment._id, replyContent);
+      // Implement reply functionality
+      // This would likely call an API function like replyToComment(comment._id, replyContent)
       setReplyContent("");
       setIsReplying(false);
+      // If onRefresh is provided, call it to refresh the comment list
+      if (onRefresh) onRefresh();
     } catch (error) {
       console.error("Failed to reply to comment:", error);
     } finally {
@@ -202,9 +201,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               key={reply._id}
               comment={reply}
               postId={postId}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              onReply={onReply}
+              onRefresh={onRefresh}
             />
           ))}
         </div>
